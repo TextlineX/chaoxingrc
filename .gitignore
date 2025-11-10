@@ -43,3 +43,21 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# If you're using Android local properties (like API keys)
+/android/local.properties
+
+# Platform specific folders (if only developing for Android)
+/ios/
+/linux/
+/macos/
+/windows/
+/web/
+
+# Temporary configuration files
+/android_manifest_config.xml
+/main_activity_config.kt
+/pubspec.yaml_additions
+
+# Development tools
+/devtools_options.yaml
