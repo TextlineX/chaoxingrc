@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../services/api_service.dart';
+import '../services/api_client.dart';
 import 'file_provider.dart';
 
 class UserProvider extends ChangeNotifier {
@@ -41,7 +41,7 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> init() async {
+  Future<void> init({bool notify = true}) async {
     _prefs = await SharedPreferences.getInstance();
     _token = _prefs.getString(_tokenKey) ?? '';
     _username = _prefs.getString(_usernameKey) ?? '';
@@ -62,7 +62,7 @@ class UserProvider extends ChangeNotifier {
       }
     }
 
-    notifyListeners();
+    if (notify) notifyListeners();
   }
 
   // 开发者登录
@@ -83,8 +83,8 @@ class UserProvider extends ChangeNotifier {
       await _prefs.setString(_avatarKey, _avatarUrl);
       await _prefs.setString(_serverUrlKey, _serverUrl);
 
-      // 初始化API服务
-      await ApiService().updateServerUrl(_serverUrl);
+      // 初始化API客户端
+      await ApiClient().updateServerUrl(_serverUrl);
 
       // 计算网盘总大小
       final fileProvider = Provider.of<FileProvider>(context, listen: false);

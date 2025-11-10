@@ -28,6 +28,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // 增加堆内存大小
+        manifestPlaceholders["largeHeap"] = "true"
     }
 
     buildTypes {
@@ -36,6 +39,15 @@ android {
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
+        debug {
+            // 调试版本也增加内存
+            isDebuggable = true
+        }
+    }
+    
+    // 增加JVM堆内存大小
+    dexOptions {
+        javaMaxHeapSize = "4g"
     }
 }
 

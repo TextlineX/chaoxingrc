@@ -18,14 +18,14 @@ class ThemeProvider extends ChangeNotifier {
   bool get useDynamicColor => _useDynamicColor;
   String get backgroundImagePath => _backgroundImagePath;
 
-  Future<void> init() async {
+  Future<void> init({bool notify = true}) async {
     _prefs = await SharedPreferences.getInstance();
     _themeMode = _parseMode(_prefs.getString(_themeKey));
     final colorValue = _prefs.getInt(_colorKey);
     _seedColor = colorValue != null ? Color(colorValue) : Colors.blue;
     _useDynamicColor = _prefs.getBool(_dynamicKey) ?? true;
     _backgroundImagePath = _prefs.getString('bg_path') ?? '';
-    notifyListeners();
+    if (notify) notifyListeners();
   }
 
   ThemeMode _parseMode(String? v) =>

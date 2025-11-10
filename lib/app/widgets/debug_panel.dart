@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/file_provider.dart';
+import '../services/api_client.dart';
+import '../utils/network_monitor.dart';
+import 'network_request_detail_dialog.dart';
 
 class DebugPanel extends StatefulWidget {
   const DebugPanel({super.key});
@@ -18,6 +21,8 @@ class _DebugPanelState extends State<DebugPanel> {
   final double _minWidth = 120;
   final double _maxWidth = 400;
   final List<String> _debugLogs = [];
+  bool _showNetworkLogs = false;
+  late final NetworkMonitor _networkMonitor;
 
   @override
   void initState() {
@@ -30,6 +35,27 @@ class _DebugPanelState extends State<DebugPanel> {
         _y = (screenSize.height - 100) / 2;
       });
     });
+
+    // 初始化网络监控
+    _networkMonitor = NetworkMonitor();
+    _setupNetworkMonitor();
+  }
+
+  void _setupNetworkMonitor() {
+    // 添加网络请求监听器
+    _networkMonitor.addListener((request) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+
+    // 添加网络请求拦截器
+    try {
+      final apiClient = ApiClient();
+      apiClient.addInterceptor(_networkMonitor.createInterceptor());
+    } catch (e) {
+      addDebugLog('添加网络拦截器失败: $e');
+    }
   }
 
   void addDebugLog(String message) {
@@ -144,6 +170,77 @@ class _DebugPanelState extends State<DebugPanel> {
                     },
                   ),
                   const Divider(color: Colors.grey),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _showNetworkLogs = !_showNetworkLogs;
+                            });
+                          },
+                          child: Container(
+                            height: 30,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            decoration: BoxDecoration(
+                              color: _showNetworkLogs ? Colors.grey[700] : Colors.grey[800],
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _showNetworkLogs ? Icons.network_check : Icons.network_ping,
+                                  color: Colors.white,
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _showNetworkLogs ? '网络日志' : '调试日志',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (_showNetworkLogs)
+                        GestureDetector(
+                          onTap: () {
+                            _networkMonitor.clear();
+                            addDebugLog('已清空网络日志');
+                          },
+                          child: Container(
+                            height: 30,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(
+                                  Icons.clear_all,
+                                  color: Colors.white,
+                                  size: 14,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  '清空',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
                   Container(
                     height: 100,
                     padding: const EdgeInsets.all(4),
@@ -151,19 +248,96 @@ class _DebugPanelState extends State<DebugPanel> {
                       color: Colors.black,
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: ListView.builder(
-                      itemCount: _debugLogs.length,
-                      itemBuilder: (context, index) {
-                        return Text(
-                          _debugLogs[index],
-                          style: const TextStyle(
-                            color: Colors.green,
-                            fontSize: 10,
-                            fontFamily: 'monospace',
+                    child: _showNetworkLogs
+                        ? ListView.builder(
+                            itemCount: _networkMonitor.networkRequests.length,
+                            itemBuilder: (context, index) {
+                              final request = _networkMonitor.networkRequests[index];
+                              final status = request['status'] as String;
+                              final statusCode = request['statusCode'];
+                              final duration = request['duration'] as int;
+
+                              Color statusColor = Colors.white;
+                              if (status == '成功') {
+                                statusColor = Colors.green;
+                              } else if (status == '失败') {
+                                statusColor = Colors.red;
+                              } else if (status == '请求中') {
+                                statusColor = Colors.yellow;
+                              }
+
+                              return GestureDetector(
+                                onTap: () {
+                                  showNetworkRequestDetailDialog(context, request);
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 1),
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        '${request['timestamp']} ',
+                                        style: const TextStyle(
+                                          color: Colors.grey,
+                                          fontSize: 10,
+                                          fontFamily: 'monospace',
+                                        ),
+                                      ),
+                                      Text(
+                                        '${request['method']} ',
+                                        style: const TextStyle(
+                                          color: Colors.cyan,
+                                          fontSize: 10,
+                                          fontFamily: 'monospace',
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          '${request['url']}',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontFamily: 'monospace',
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (statusCode != null)
+                                        Text(
+                                          ' $statusCode',
+                                          style: TextStyle(
+                                            color: statusColor,
+                                            fontSize: 10,
+                                            fontFamily: 'monospace',
+                                          ),
+                                        ),
+                                      Text(
+                                        ' ${duration}ms',
+                                        style: TextStyle(
+                                          color: statusColor,
+                                          fontSize: 10,
+                                          fontFamily: 'monospace',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : ListView.builder(
+                            itemCount: _debugLogs.length,
+                            itemBuilder: (context, index) {
+                              return Text(
+                                _debugLogs[index],
+                                style: const TextStyle(
+                                  color: Colors.green,
+                                  fontSize: 10,
+                                  fontFamily: 'monospace',
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
                   ),
                 ],
               ],

@@ -7,7 +7,7 @@ import '../screens/message_screen.dart';
 import '../screens/about_screen.dart';
 import '../screens/donate_screen.dart';
 import '../screens/server_config_screen.dart';
-import '../screens/files/files_screen.dart';
+import '../screens/files/files_tab.dart';
 import '../widgets/dynamic_theme_builder.dart';
 
 class AppRoutes {
@@ -28,7 +28,7 @@ class AppRoutes {
     about: (context) => const DynamicThemeBuilder(child: AboutScreen()),
     donate: (context) => const DynamicThemeBuilder(child: DonateScreen()),
     serverConfig: (context) => const DynamicThemeBuilder(child: ServerConfigScreen()),
-    files: (context) => const DynamicThemeBuilder(child: FilesScreen()),
+    files: (context) => const DynamicThemeBuilder(child: FilesTab()),
   };
 
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {

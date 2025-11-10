@@ -1,14 +1,10 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- 添加必要的权限 -->
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="textline.chaoxingrc.chaoxingrc">
     <application
-        android:label="chaoxingrc"
+        android:label="超星网盘"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:largeHeap="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -31,12 +27,94 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <!-- 添加flutter_downloader服务 -->
-        <service
-            android:name="vn.hunghd.flutterdownloader.DownloadWorker"
+
+        <!-- 默认图标 -->
+        <activity-alias
+            android:name=".MainAlias"
             android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+
+        <!-- 蓝色图标 -->
+        <!--
+        <activity-alias
+            android:name=".BlueIconActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_blue"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        -->
+
+        <!-- 绿色图标 -->
+        <!--
+        <activity-alias
+            android:name=".GreenIconActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_green"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        -->
+
+        <!-- 紫色图标 -->
+        <!--
+        <activity-alias
+            android:name=".PurpleIconActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_purple"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        -->
+
+        <!-- 橙色图标 -->
+        <!--
+        <activity-alias
+            android:name=".OrangeIconActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_orange"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        -->
+
+        <!-- 红色图标 -->
+        <!--
+        <activity-alias
+            android:name=".RedIconActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_red"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        -->
 
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'package:retry/retry.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'config_service.dart';
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
@@ -12,17 +12,16 @@ class ApiService {
   ApiService._internal();
 
   late Dio _dio;
-  String? _serverUrl;
+  ApiConfig? _config;
 
   Future<void> init() async {
-    final prefs = await SharedPreferences.getInstance();
-    _serverUrl = prefs.getString('server_url');
+    _config = await ConfigService.getConfig();
 
     debugPrint('=== 初始化API服务 ===');
-    debugPrint('从SharedPreferences获取的服务器URL: $_serverUrl');
+    debugPrint('从ConfigService获取的服务器配置: ${_config?.baseUrl}');
 
     _dio = Dio(BaseOptions(
-      baseUrl: _serverUrl ?? '',
+      baseUrl: _config?.baseUrl ?? '',
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       sendTimeout: const Duration(seconds: 30),
@@ -65,17 +64,16 @@ class ApiService {
     );
   }
 
-  Future<void> updateServerUrl(String url) async {
-    _serverUrl = url;
-    _dio.options.baseUrl = url;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('server_url', url);
+  Future<void> updateConfig(ApiConfig config) async {
+    _config = config;
+    _dio.options.baseUrl = config.baseUrl;
+    await ConfigService.saveConfig(config);
   }
 
   Future<bool> checkConnection() async {
     try {
       debugPrint('=== 开始检查网络连接 ===');
-      debugPrint('当前服务器URL: $_serverUrl');
+      debugPrint('当前服务器URL: ${_config?.baseUrl}');
 
       final connectivityResult = await (Connectivity().checkConnectivity());
       debugPrint('网络连接状态: $connectivityResult');

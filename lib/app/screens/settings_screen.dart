@@ -5,9 +5,21 @@ import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
 import '../widgets/theme_selector.dart';
 import '../widgets/color_picker.dart';
+import '../services/download_path_service.dart';
+import 'package:path_provider/path_provider.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +30,35 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
+          // 应用设置
+          Card(
+            child: Column(
+              children: [
+// 图标选择功能已移除
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // 下载设置
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  title: const Text('下载路径'),
+                  subtitle: const Text('设置文件下载保存路径'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    _showDownloadPathDialog(context);
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
           // 主题设置
           Consumer<ThemeProvider>(
             builder: (context, themeProvider, child) {
@@ -139,6 +180,57 @@ class SettingsScreen extends StatelessWidget {
             themeProvider.setSeedColor(color);
             Navigator.pop(context);
           },
+        );
+      },
+    );
+  }
+
+// 图标选择功能已移除
+
+  void _showDownloadPathDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('选择下载路径'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: const Text('系统下载目录'),
+                subtitle: const Text('/storage/emulated/0/Download'),
+                leading: const Icon(Icons.download),
+                onTap: () async {
+                  await DownloadPathService.setDownloadPath(DownloadPathService.systemDownloadPath);
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('已设置为系统下载目录')),
+                  );
+                },
+              ),
+              ListTile(
+                title: const Text('应用内部目录'),
+                subtitle: const Text('应用私有目录，卸载应用后文件会丢失'),
+                leading: const Icon(Icons.folder),
+                onTap: () async {
+                  final appDir = await getApplicationDocumentsDirectory();
+                  await DownloadPathService.setDownloadPath(appDir.path);
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('已设置为应用内部目录')),
+                  );
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('取消'),
+            ),
+          ],
         );
       },
     );
