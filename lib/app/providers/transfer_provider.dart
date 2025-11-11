@@ -191,8 +191,8 @@ class TransferProvider extends ChangeNotifier {
       );
       notifyListeners();
 
-      // 执行上传
-      await _apiService.uploadFileWithProgress(
+      // 执行直接上传，不经过服务器
+      await _apiService.uploadFileDirectlyWithProgress(
         task.filePath,
         dirId: task.dirId,
         onProgress: (progress) {
@@ -252,7 +252,19 @@ class TransferProvider extends ChangeNotifier {
 
       // 如果是上传任务，刷新文件列表
       if (task.type == TransferType.upload) {
-        _fileProvider?.loadFiles(folderId: task.dirId);
+        debugPrint('上传任务完成，准备刷新文件列表');
+        // 添加更长的延迟，确保服务器端已经处理完成
+        await Future.delayed(const Duration(seconds: 3));
+        
+        // 先尝试刷新当前文件夹
+        _fileProvider?.loadFiles(folderId: task.dirId, forceRefresh: true);
+        
+        // 等待更长时间
+        await Future.delayed(const Duration(seconds: 2));
+        
+        // 再次刷新，强制刷新
+        _fileProvider?.loadFiles(folderId: task.dirId, forceRefresh: true);
+        debugPrint('文件列表刷新完成');
       }
     } catch (e) {
       // 更新任务状态为失败

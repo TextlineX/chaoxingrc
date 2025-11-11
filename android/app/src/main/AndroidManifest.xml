@@ -47,7 +47,7 @@
             android:name=".BlueIconActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher_blue"
+            android:icon="@mipmap/ic_launcher"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -62,7 +62,7 @@
             android:name=".GreenIconActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher_green"
+            android:icon="@mipmap/ic_launcher"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -77,7 +77,7 @@
             android:name=".PurpleIconActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher_purple"
+            android:icon="@mipmap/ic_launcher"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -92,7 +92,7 @@
             android:name=".OrangeIconActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher_orange"
+            android:icon="@mipmap/ic_launcher"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -107,7 +107,7 @@
             android:name=".RedIconActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher_red"
+            android:icon="@mipmap/ic_launcher"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>

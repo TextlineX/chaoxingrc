@@ -1,4 +1,6 @@
 // 文件项模型 - 表示文件或文件夹
+import 'package:flutter/material.dart';
+
 class FileItem {
   final String id;
   final String name;
@@ -18,14 +20,50 @@ class FileItem {
 
   // 从JSON创建FileItem实例
   factory FileItem.fromJson(Map<String, dynamic> json) {
-    return FileItem(
-      id: json['id']?.toString() ?? '',
-      name: json['name']?.toString() ?? '',
-      type: json['type']?.toString() ?? '',
-      size: int.tryParse(json['size']?.toString() ?? '') ?? 0,
-      uploadTime: DateTime.tryParse(json['uploadTime']?.toString() ?? '') ?? DateTime.now(),
-      isFolder: json['type']?.toString() == '文件夹',
-    );
+    try {
+      // 确保所有字段都正确转换为所需类型
+      final id = json['id'] is String ? json['id'] : json['id']?.toString() ?? '';
+      final name = json['name'] is String ? json['name'] : json['name']?.toString() ?? '';
+      final type = json['type'] is String ? json['type'] : json['type']?.toString() ?? '';
+      
+      // 处理size字段，可能是int或String
+      int size = 0;
+      if (json['size'] is int) {
+        size = json['size'];
+      } else if (json['size'] is String) {
+        size = int.tryParse(json['size']) ?? 0;
+      } else {
+        size = int.tryParse(json['size']?.toString() ?? '') ?? 0;
+      }
+      
+      // 处理uploadTime字段
+      DateTime uploadTime = DateTime.now();
+      if (json['uploadTime'] is String) {
+        uploadTime = DateTime.tryParse(json['uploadTime']) ?? DateTime.now();
+      } else if (json['uploadTime'] is int) {
+        // 如果是时间戳
+        uploadTime = DateTime.fromMillisecondsSinceEpoch(json['uploadTime']);
+      } else {
+        uploadTime = DateTime.tryParse(json['uploadTime']?.toString() ?? '') ?? DateTime.now();
+      }
+      
+      final isFolder = type == '文件夹';
+      
+      return FileItem(
+        id: id,
+        name: name,
+        type: type,
+        size: size,
+        uploadTime: uploadTime,
+        isFolder: isFolder,
+      );
+    } catch (e, stackTrace) {
+      // 打印详细的错误信息，帮助调试
+      debugPrint('FileItem.fromJson 错误: $e');
+      debugPrint('错误堆栈: $stackTrace');
+      debugPrint('输入JSON: $json');
+      rethrow;
+    }
   }
 
   // 格式化文件大小

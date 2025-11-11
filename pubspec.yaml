@@ -52,6 +52,7 @@ dependencies:
   # UI组件
   material_color_utilities: ^0.11.1
   dynamic_color: ^1.6.8
+  flutter_svg: ^2.0.9
 
   # 文件处理
   file_selector: ^1.0.1
@@ -101,12 +102,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/icon/
-    - assets/icon/app_icon.png
-    - assets/icon/app_icon_blue.png
-    - assets/icon/app_icon_green.png
-    - assets/icon/app_icon_purple.png
-    - assets/icon/app_icon_orange.png
-    - assets/icon/app_icon_red.png
+    - assets/icons/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

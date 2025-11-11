@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import '../screens/login_screen.dart';
 import '../screens/home_screen.dart';
@@ -8,6 +7,8 @@ import '../screens/about_screen.dart';
 import '../screens/donate_screen.dart';
 import '../screens/server_config_screen.dart';
 import '../screens/files/files_tab.dart';
+import '../screens/local_mode_setup_screen.dart';
+import '../screens/edit_profile_screen.dart';
 import '../widgets/dynamic_theme_builder.dart';
 
 class AppRoutes {
@@ -19,16 +20,11 @@ class AppRoutes {
   static const String donate = '/donate';
   static const String serverConfig = '/server_config';
   static const String files = '/files';
+  static const String localModeSetup = '/local_mode_setup';
+  static const String editProfile = '/edit_profile';
 
-  static Map<String, WidgetBuilder> routes = {
-    login: (context) => const DynamicThemeBuilder(child: LoginScreen()),
-    home: (context) => const DynamicThemeBuilder(child: HomeScreen()),
-    settings: (context) => const DynamicThemeBuilder(child: SettingsScreen()),
-    messages: (context) => const DynamicThemeBuilder(child: MessageScreen()),
-    about: (context) => const DynamicThemeBuilder(child: AboutScreen()),
-    donate: (context) => const DynamicThemeBuilder(child: DonateScreen()),
-    serverConfig: (context) => const DynamicThemeBuilder(child: ServerConfigScreen()),
-    files: (context) => const DynamicThemeBuilder(child: FilesTab()),
+  static final Map<String, WidgetBuilder> routes = {
+    '/home': (context) => const HomeScreen(),
   };
 
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {

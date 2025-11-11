@@ -322,7 +322,7 @@ class ApiService {
       });
       
       final response = await _dio.post(
-        '/flutter/api',
+        '/flutter/upload',
         data: formData,
         options: Options(
           contentType: 'multipart/form-data',

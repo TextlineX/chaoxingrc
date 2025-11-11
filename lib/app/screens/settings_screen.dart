@@ -7,6 +7,7 @@ import '../widgets/theme_selector.dart';
 import '../widgets/color_picker.dart';
 import '../services/download_path_service.dart';
 import 'package:path_provider/path_provider.dart';
+import './login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -111,19 +112,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
               return Card(
                 child: Column(
                   children: [
-                    ListTile(
-                      title: const Text('当前服务器'),
-                      subtitle: Text(userProvider.serverUrl.isEmpty 
-                          ? '未设置' 
-                          : userProvider.serverUrl),
-                    ),
-                    const Divider(height: 1),
+                    // 只在服务器模式下显示当前服务器信息
+                    if (userProvider.loginMode == 'server') ...[
+                      ListTile(
+                        title: const Text('当前服务器'),
+                        subtitle: Text(userProvider.serverUrl.isEmpty 
+                            ? '未设置' 
+                            : userProvider.serverUrl),
+                      ),
+                      const Divider(height: 1),
+                    ],
                     SwitchListTile(
                       title: const Text('开发者模式'),
                       subtitle: const Text('开启后可以查看调试信息'),
                       value: userProvider.isDeveloperMode,
+                      // 所有模式下都可以切换开发者模式
                       onChanged: (value) {
                         userProvider.toggleDeveloperMode();
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      title: const Text('登录模式'),
+                      subtitle: Text(userProvider.loginMode == 'server' 
+                          ? '服务器模式' 
+                          : '独立模式'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        _showLoginModeDialog(context, userProvider);
                       },
                     ),
                     const Divider(height: 1),
@@ -254,8 +270,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: () {
                 userProvider.logout();
                 Navigator.pop(context);
+                // 确保返回到登录页面
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  (route) => false,
+                );
               },
               child: const Text('确定'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showLoginModeDialog(BuildContext context, UserProvider userProvider) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('登录模式'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<String>(
+                title: const Text('服务器模式'),
+                subtitle: const Text('需要连接服务器进行用户认证'),
+                value: 'server',
+                groupValue: userProvider.loginMode,
+                onChanged: (value) {
+                  if (value != null) {
+                    userProvider.setLoginMode(value);
+                    Navigator.pop(context);
+                  }
+                },
+              ),
+              RadioListTile<String>(
+                title: const Text('独立模式'),
+                subtitle: const Text('本地用户，无需服务器'),
+                value: 'local',
+                groupValue: userProvider.loginMode,
+                onChanged: (value) {
+                  if (value != null) {
+                    userProvider.setLoginMode(value);
+                    Navigator.pop(context);
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('取消'),
             ),
           ],
         );

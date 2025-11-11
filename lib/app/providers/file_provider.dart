@@ -68,34 +68,68 @@ class FileProvider extends ChangeNotifier {
   }
 
   // 加载文件列表
-  Future<void> loadFiles({String folderId = '-1', bool notify = true}) async {
+  Future<void> loadFiles({String folderId = '-1', bool notify = true, bool forceRefresh = false}) async {
     // 确保API服务已初始化
     if (!_isInitialized) {
       await init(notify: false);
     }
 
-    debugPrint('LoadFiles: folderId=$folderId, currentPathHistory=$_pathHistory');
+    debugPrint('LoadFiles: folderId=$folderId, currentPathHistory=$_pathHistory, forceRefresh=$forceRefresh');
 
     _setLoading(true, notify: false);
     try {
-      final response = await _apiService.getFiles(folderId: folderId);
+      // 添加时间戳参数，防止缓存
+      final timestamp = forceRefresh ? DateTime.now().millisecondsSinceEpoch : null;
+      final response = await _apiService.getFiles(folderId: folderId, timestamp: timestamp);
+      
+      debugPrint('API响应: $response');
 
       if (response['success'] != true || response['data'] is! List) {
         throw Exception(response['message'] ?? '加载文件列表失败');
       }
 
       final List<dynamic> filesList = response['data'] as List;
-      _files = filesList.map((json) => FileItem.fromJson(json)).toList();
+      
+      // 添加详细的错误处理，逐个转换文件项
+      _files = [];
+      for (int i = 0; i < filesList.length; i++) {
+        try {
+          final json = filesList[i];
+          if (json is Map<String, dynamic>) {
+            final fileItem = FileItem.fromJson(json);
+            _files.add(fileItem);
+          } else {
+            debugPrint('警告: filesList[$i] 不是 Map<String, dynamic> 类型，实际类型: ${json.runtimeType}');
+          }
+        } catch (e, stackTrace) {
+          debugPrint('转换 filesList[$i] 时出错: $e');
+          debugPrint('错误堆栈: $stackTrace');
+          if (i < filesList.length) {
+            debugPrint('有问题的数据: ${filesList[i]}');
+          }
+          // 继续处理其他文件项，不中断整个过程
+        }
+      }
+      
       _currentFolderId = folderId;
       _error = null;
 
       debugPrint('LoadFiles completed: folderId=$folderId, filesCount=${_files.length}');
+      
+      // 打印前几个文件的信息，用于调试
+      if (_files.isNotEmpty) {
+        debugPrint('前3个文件:');
+        for (int i = 0; i < _files.length && i < 3; i++) {
+          debugPrint('  ${i+1}. ${_files[i].name} (ID: ${_files[i].id})');
+        }
+      }
 
       // 确保总是通知监听器，以便更新UI
       notifyListeners();
-    } catch (e) {
+    } catch (e, stackTrace) {
       _error = e.toString();
       debugPrint('LoadFiles error: $e');
+      debugPrint('LoadFiles error stack trace: $stackTrace');
       notifyListeners();
     } finally {
       _setLoading(false, notify: false);
@@ -197,14 +231,37 @@ class FileProvider extends ChangeNotifier {
   Future<void> uploadFile(String filePath, {String dirId = '-1'}) async {
     _setLoading(true);
     try {
-      final response = await _apiService.uploadFile(filePath, dirId: dirId);
-
+      // 使用直接上传功能，不经过服务器
+      debugPrint('开始上传文件: $filePath 到文件夹: $dirId');
+      final response = await _apiService.uploadFileDirectly(filePath, dirId: dirId);
+      
+      debugPrint('上传响应: $response');
+      
       if (response['success'] != true) {
         throw Exception(response['message'] ?? '上传文件失败');
       }
-
-      await loadFiles(folderId: _currentFolderId);
+      
+      debugPrint('文件上传成功，开始刷新文件列表');
+      
+      // 添加更长的延迟，确保服务器端已经处理完成
+      await Future.delayed(const Duration(seconds: 3));
+      
+      // 先尝试刷新当前文件夹
+      await loadFiles(folderId: _currentFolderId, forceRefresh: true);
+      
+      // 如果文件数量没有增加，再尝试一次
+      final initialCount = _files.length;
+      debugPrint('第一次刷新后文件数量: $initialCount');
+      
+      // 等待更长时间
+      await Future.delayed(const Duration(seconds: 2));
+      
+      // 再次刷新，强制刷新
+      await loadFiles(folderId: _currentFolderId, forceRefresh: true);
+      debugPrint('第二次刷新后文件数量: ${_files.length}');
+      debugPrint('文件列表刷新完成');
     } catch (e) {
+      debugPrint('上传文件出错: $e');
       _error = e.toString();
       rethrow;
     } finally {

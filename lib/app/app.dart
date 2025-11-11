@@ -35,6 +35,7 @@ class App extends StatelessWidget {
               DynamicThemeBuilder(
                 child: userProvider.isLoggedIn ? const HomeScreen() : const LoginScreen(),
               ),
+              // 只要开启开发者模式就显示调试面板，无论哪种登录模式
               if (userProvider.isDeveloperMode) const DebugPanel(),
             ],
           ),

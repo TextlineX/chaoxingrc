@@ -12,6 +12,7 @@ class UserProvider extends ChangeNotifier {
   static const String _avatarKey = 'avatar_url';
   static const String _serverUrlKey = 'server_url';
   static const String _serverListKey = 'server_list';
+  static const String _loginModeKey = 'login_mode'; // 登录模式：server 或 local
 
   late SharedPreferences _prefs;
   bool _isLoggedIn = false;
@@ -23,6 +24,7 @@ class UserProvider extends ChangeNotifier {
   List<Map<String, String>> _serverList = [];
   String _error = '';
   bool _isDeveloperMode = false;
+  String _loginMode = 'server'; // 登录模式：server(服务器模式) 或 local(独立模式)
 
   // Getters
   bool get isLoggedIn => _isLoggedIn;
@@ -34,10 +36,12 @@ class UserProvider extends ChangeNotifier {
   List<Map<String, String>> get serverList => _serverList;
   String get error => _error;
   bool get isDeveloperMode => _isDeveloperMode;
+  String get loginMode => _loginMode;
 
   // Methods
   void toggleDeveloperMode() {
     _isDeveloperMode = !_isDeveloperMode;
+    _prefs.setBool('is_developer_mode', _isDeveloperMode); // 保存开发者模式状态
     notifyListeners();
   }
 
@@ -48,6 +52,8 @@ class UserProvider extends ChangeNotifier {
     _nickname = _prefs.getString(_nicknameKey) ?? '';
     _avatarUrl = _prefs.getString(_avatarKey) ?? '';
     _serverUrl = _prefs.getString(_serverUrlKey) ?? '';
+    _loginMode = _prefs.getString(_loginModeKey) ?? 'server';
+    _isDeveloperMode = _prefs.getBool('is_developer_mode') ?? false; // 添加开发者模式状态的读取
     _isLoggedIn = _token.isNotEmpty;
 
     // 加载服务器列表
@@ -82,6 +88,7 @@ class UserProvider extends ChangeNotifier {
       await _prefs.setString(_nicknameKey, _nickname);
       await _prefs.setString(_avatarKey, _avatarUrl);
       await _prefs.setString(_serverUrlKey, _serverUrl);
+      await _prefs.setString(_loginModeKey, _loginMode);
 
       // 初始化API客户端
       await ApiClient().updateServerUrl(_serverUrl);
@@ -111,6 +118,31 @@ class UserProvider extends ChangeNotifier {
     await _prefs.remove(_nicknameKey);
     await _prefs.remove(_avatarKey);
 
+    notifyListeners();
+  }
+
+  // 设置登录模式
+  Future<void> setLoginMode(String mode) async {
+    _loginMode = mode;
+    await _prefs.setString(_loginModeKey, mode);
+    notifyListeners();
+  }
+
+  // 更新用户信息（仅独立模式可用）
+  Future<void> updateLocalUserInfo({
+    String? username,
+    String? nickname,
+    String? avatarUrl,
+  }) async {
+    // 允许在设置独立模式时更新用户信息
+    if (username != null) _username = username;
+    if (nickname != null) _nickname = nickname;
+    if (avatarUrl != null) _avatarUrl = avatarUrl;
+    
+    if (username != null) await _prefs.setString(_usernameKey, username);
+    if (nickname != null) await _prefs.setString(_nicknameKey, nickname);
+    if (avatarUrl != null) await _prefs.setString(_avatarKey, avatarUrl);
+    
     notifyListeners();
   }
 

@@ -1,6 +1,5 @@
 
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart' show NoSplash;
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;

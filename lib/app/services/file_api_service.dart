@@ -1,5 +1,7 @@
 // 文件API服务 - 处理文件相关操作
+import 'package:flutter/foundation.dart';
 import 'package:chaoxingrc/app/services/api_client.dart';
+import 'package:chaoxingrc/app/services/direct_upload_service.dart';
 
 class FileApiService {
   final ApiClient _client = ApiClient();
@@ -7,16 +9,26 @@ class FileApiService {
   // 初始化方法
   Future<void> init() async {
     await _client.init();
+    await DirectUploadService().init();
   }
 
   // 获取文件列表
-  Future<Map<String, dynamic>> getFiles({String folderId = '-1'}) async {
+  Future<Map<String, dynamic>> getFiles({String folderId = '-1', int? timestamp}) async {
+    debugPrint('获取文件列表: folderId=$folderId, timestamp=$timestamp');
+    
+    final Map<String, dynamic> requestData = {
+      'action': 'listFiles',
+      'params': {'folderId': folderId},
+    };
+    
+    // 如果有时间戳，添加到请求中
+    if (timestamp != null) {
+      requestData['params']['_t'] = timestamp;
+    }
+    
     final response = await _client.post<Map<String, dynamic>>(
       '/flutter/api',
-      data: {
-        'action': 'listFiles',
-        'params': {'folderId': folderId},
-      },
+      data: requestData,
     );
 
     // 返回完整的响应数据，包含success、data和message字段
@@ -174,6 +186,32 @@ class FileApiService {
         'action': 'downloadFileToLocal',
         'params': params,
       },
+    );
+  }
+
+  // 直接上传文件到超星网盘，不经过服务器
+  Future<Map<String, dynamic>> uploadFileDirectly(
+    String filePath, {
+    String dirId = '-1',
+    Function(double progress)? onProgress,
+  }) async {
+    return await DirectUploadService().uploadFileDirectly(
+      filePath,
+      dirId: dirId,
+      onProgress: onProgress,
+    );
+  }
+
+  // 带进度回调的直接上传文件
+  Future<Map<String, dynamic>> uploadFileDirectlyWithProgress(
+    String filePath, {
+    String dirId = '-1',
+    Function(double progress)? onProgress,
+  }) async {
+    return await DirectUploadService().uploadFileDirectly(
+      filePath,
+      dirId: dirId,
+      onProgress: onProgress,
     );
   }
 

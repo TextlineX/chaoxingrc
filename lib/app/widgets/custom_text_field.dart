@@ -11,6 +11,7 @@ class CustomTextField extends StatelessWidget {
   final String? Function(String?)? validator;
   final void Function(String)? onChanged;
   final VoidCallback? onSuffixIconTap;
+  final bool enabled;
 
   const CustomTextField({
     super.key,
@@ -23,6 +24,7 @@ class CustomTextField extends StatelessWidget {
     this.validator,
     this.onChanged,
     this.onSuffixIconTap,
+    this.enabled = true,
   });
 
   @override
@@ -32,6 +34,7 @@ class CustomTextField extends StatelessWidget {
       obscureText: obscureText,
       validator: validator,
       onChanged: onChanged,
+      enabled: enabled,
       decoration: InputDecoration(
         labelText: labelText,
         hintText: hintText,

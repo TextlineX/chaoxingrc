@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/transfer_provider.dart';
 import '../../models/transfer_task.dart';
 import '../../widgets/transfer_task_item.dart';
+import '../../widgets/custom_cloud_icons.dart';
 
 class TransferTab extends StatefulWidget {
   const TransferTab({super.key, this.showTitle = false});
@@ -144,13 +145,15 @@ class _TransferTabState extends State<TransferTab> with SingleTickerProviderStat
                       color: primaryColor.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
-                      type == TransferType.upload
-                          ? Icons.cloud_upload_outlined
-                          : Icons.cloud_download_outlined,
-                      size: 48,
-                      color: primaryColor,
-                    ),
+                    child: type == TransferType.upload
+                      ? CustomCloudUploadIcon(
+                          size: 48,
+                          color: primaryColor,
+                        )
+                      : CustomCloudDownloadIcon(
+                          size: 48,
+                          color: primaryColor,
+                        ),
                   ),
                   const SizedBox(height: 16),
                   Text(

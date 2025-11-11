@@ -6,6 +6,8 @@ import '../../widgets/dynamic_theme_builder.dart';
 import '../about_screen.dart';
 import '../donate_screen.dart';
 import '../server_config_screen.dart';
+import '../edit_profile_screen.dart';
+import '../auth_config_screen.dart';
 
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
@@ -65,36 +67,25 @@ class ProfileTab extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              // 网盘空间
+              // 编辑资料
               Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '网盘空间',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                child: ListTile(
+                  leading: const Icon(Icons.edit),
+                  title: const Text('编辑资料'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const DynamicThemeBuilder(
+                          child: EditProfileScreen(),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      LinearProgressIndicator(
-                        value: 0.3, // 模拟使用率30%
-                        backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '已使用: 3GB / 总容量: 10GB',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ),
+
+              const SizedBox(height: 16),
 
               const SizedBox(height: 16),
 
@@ -103,14 +94,14 @@ class ProfileTab extends StatelessWidget {
                 child: Column(
                   children: [
                     ListTile(
-                      leading: const Icon(Icons.dns),
-                      title: const Text('服务器配置'),
+                      leading: const Icon(Icons.key),
+                      title: const Text('认证配置'),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) => const DynamicThemeBuilder(
-                              child: ServerConfigScreen(),
+                              child: AuthConfigScreen(),
                             ),
                           ),
                         );

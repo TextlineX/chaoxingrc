@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../widgets/custom_text_field.dart';
+import '../widgets/custom_cloud_icon.dart';
+import 'local_mode_setup_screen.dart';
+import '../services/config_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,6 +19,27 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _isDeveloperMode = false;
   bool _showDeveloperToggle = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 从配置服务加载服务器地址
+    _loadServerConfig();
+  }
+
+  Future<void> _loadServerConfig() async {
+    try {
+      final config = await ConfigService.getConfig();
+      setState(() {
+        _serverController.text = config.baseUrl;
+      });
+    } catch (e) {
+      // 如果加载配置失败，使用默认值
+      setState(() {
+        _serverController.text = 'http://192.168.31.254:8080';
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -43,8 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Icon(
-                        Icons.cloud,
+                      CustomCloudIcon(
                         size: 80,
                         color: Theme.of(context).colorScheme.primary,
                       ),
@@ -126,14 +149,21 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 24),
 
                       ElevatedButton(
-                        onPressed: _isLoading ? null : _developerLogin,
+                        onPressed: _isLoading ? null : _serverLogin,
                         child: _isLoading
                             ? const SizedBox(
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                            : const Text('开发者登录'),
+                            : const Text('服务器登录'),
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      TextButton(
+                        onPressed: _switchToLocalMode,
+                        child: const Text('使用独立模式（无需服务器）'),
                       ),
                     ],
                   ),
@@ -146,7 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _developerLogin() async {
+  Future<void> _serverLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
@@ -157,8 +187,22 @@ class _LoginScreenState extends State<LoginScreen> {
       serverUrl =
       uri.scheme.isNotEmpty ? uri.toString() : 'http://$serverUrl';
 
+      // 保存服务器配置
+      final config = await ConfigService.getConfig();
+      final newConfig = ApiConfig(
+        baseUrl: serverUrl,
+        username: config.username,
+        password: config.password,
+      );
+      await ConfigService.saveConfig(newConfig);
+
       final userProvider =
       Provider.of<UserProvider>(context, listen: false);
+      
+      // 设置为服务器模式
+      await userProvider.setLoginMode('server');
+      
+      // 开发者登录（后续需要替换为真实登录）
       final success = await userProvider.developerLogin(context, serverUrl);
 
       if (success) {
@@ -170,5 +214,13 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+  
+  void _switchToLocalMode() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const LocalModeSetupScreen(),
+      ),
+    );
   }
 }

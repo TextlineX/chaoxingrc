@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../widgets/custom_cloud_icon.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -45,8 +46,7 @@ class _AboutScreenState extends State<AboutScreen> {
                 color: Theme.of(context).colorScheme.primary,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Icon(
-                Icons.cloud,
+              child: CustomCloudIcon(
                 size: 60,
                 color: Theme.of(context).colorScheme.onPrimary,
               ),
