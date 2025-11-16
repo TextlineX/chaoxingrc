@@ -1,160 +1,93 @@
-// 传输任务提供者 - 管理所有传输任务
+// lib/app/providers/transfer_provider.dart
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/transfer_task.dart';
 import '../services/file_api_service.dart';
+import '../services/local_file_service.dart';
 import 'file_provider.dart';
 import 'dart:math' as math;
 import 'dart:io';
+import 'package:provider/provider.dart';
+import '../providers/user_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class TransferProvider extends ChangeNotifier {
   final FileApiService _apiService = FileApiService();
   final List<TransferTask> _tasks = [];
   final Uuid _uuid = const Uuid();
   FileProvider? _fileProvider;
+  String _loginMode = 'server'; // 提供默认值
 
-  // 进度更新节流控制
   DateTime? _lastProgressUpdate;
   final Map<String, double> _lastProgressValues = {};
 
-  // 初始化方法
-  Future<void> init({bool notify = true}) async {
-    await _apiService.init();
+  Future<void> init({bool notify = true, BuildContext? context}) async {
+    // 获取登录模式
+    if (context != null) {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      _loginMode = userProvider.loginMode;
+    } else {
+      // 如果没有context，尝试从SharedPreferences获取
+      final prefs = await SharedPreferences.getInstance();
+      _loginMode = prefs.getString('login_mode') ?? 'server';
+    }
+
+    // 初始化API服务
+    await _apiService.init(context: context);
+
+    // 如果是本地模式，初始化本地文件服务
+    if (_loginMode == 'local') {
+      await LocalFileService().init();
+    }
+
     if (notify) notifyListeners();
   }
 
-  // 设置文件提供者
   void setFileProvider(FileProvider fileProvider) {
     _fileProvider = fileProvider;
   }
 
-  // 获取所有任务
   List<TransferTask> get tasks => [..._tasks];
+  List<TransferTask> get activeTasks => _tasks.where((task) => task.status == TransferStatus.uploading || task.status == TransferStatus.downloading || task.status == TransferStatus.pending).toList();
+  List<TransferTask> get uploadTasks => _tasks.where((task) => task.type == TransferType.upload).toList();
+  List<TransferTask> get downloadTasks => _tasks.where((task) => task.type == TransferType.download).toList();
 
-  // 获取进行中的任务
-  List<TransferTask> get activeTasks =>
-      _tasks.where((task) => task.status == TransferStatus.uploading || 
-                           task.status == TransferStatus.downloading ||
-                           task.status == TransferStatus.pending).toList();
-
-  // 获取上传任务
-  List<TransferTask> get uploadTasks =>
-      _tasks.where((task) => task.type == TransferType.upload).toList();
-
-  // 获取下载任务
-  List<TransferTask> get downloadTasks =>
-      _tasks.where((task) => task.type == TransferType.download).toList();
-
-  // 添加上传任务
-  String addUploadTask({
-    required String filePath,
-    required String fileName,
-    required int fileSize,
-    String dirId = '-1',
-  }) {
-    // 检查文件大小限制（100MB）
+  String addUploadTask({required String filePath, required String fileName, required int fileSize, String dirId = '-1'}) {
     if (fileSize > 100 * 1024 * 1024) {
       throw Exception('文件大小超过100MB限制，请选择较小的文件');
     }
-
-    final task = TransferTask(
-      id: _uuid.v4(),
-      fileName: fileName,
-      filePath: filePath,
-      totalSize: fileSize,
-      dirId: dirId,
-      type: TransferType.upload,
-      createdAt: DateTime.now(),
-    );
-
+    final task = TransferTask(id: _uuid.v4(), fileName: fileName, filePath: filePath, totalSize: fileSize, dirId: dirId, type: TransferType.upload, createdAt: DateTime.now());
     _tasks.add(task);
     notifyListeners();
-
-    // 开始执行上传任务
     _executeUploadTask(task);
-
     return task.id;
   }
 
-  // 添加下载任务
-  String addDownloadTask({
-    required String fileId,
-    required String fileName,
-    required int fileSize,
-  }) {
-    final task = TransferTask(
-      id: _uuid.v4(),
-      fileName: fileName,
-      filePath: '', // 下载任务不需要本地文件路径
-      totalSize: fileSize,
-      dirId: fileId, // 使用dirId字段存储文件ID
-      type: TransferType.download,
-      createdAt: DateTime.now(),
-    );
-
+  String addDownloadTask({required String fileId, required String fileName, required int fileSize}) {
+    final task = TransferTask(id: _uuid.v4(), fileName: fileName, filePath: '', totalSize: fileSize, dirId: fileId, type: TransferType.download, createdAt: DateTime.now());
     _tasks.add(task);
     notifyListeners();
-
-    // 开始执行下载任务
     _executeDownloadTask(task);
-
     return task.id;
   }
 
-  // 取消任务
   Future<void> cancelTask(String taskId) async {
     final taskIndex = _tasks.indexWhere((task) => task.id == taskId);
     if (taskIndex == -1) return;
-
     final task = _tasks[taskIndex];
-    if (task.status == TransferStatus.completed ||
-        task.status == TransferStatus.failed ||
-        task.status == TransferStatus.cancelled) {
-      return;
-    }
-
-    // 更新任务状态为已取消
-    _tasks[taskIndex] = TransferTask(
-      id: task.id,
-      fileName: task.fileName,
-      filePath: task.filePath,
-      totalSize: task.totalSize,
-      dirId: task.dirId,
-      type: task.type,
-      status: TransferStatus.cancelled,
-      progress: task.progress,
-      createdAt: task.createdAt,
-      completedAt: DateTime.now(),
-    );
-
+    if (task.status == TransferStatus.completed || task.status == TransferStatus.failed || task.status == TransferStatus.cancelled) return;
+    _tasks[taskIndex] = task.copyWith(status: TransferStatus.cancelled, completedAt: DateTime.now());
     notifyListeners();
   }
 
-  // 重试失败的任务
   Future<void> retryTask(String taskId) async {
     final taskIndex = _tasks.indexWhere((task) => task.id == taskId);
     if (taskIndex == -1) return;
-
     final task = _tasks[taskIndex];
     if (task.status != TransferStatus.failed) return;
-
-    // 重置任务状态
-    _tasks[taskIndex] = TransferTask(
-      id: task.id,
-      fileName: task.fileName,
-      filePath: task.filePath,
-      totalSize: task.totalSize,
-      dirId: task.dirId,
-      type: task.type,
-      status: TransferStatus.pending,
-      progress: 0,
-      errorMessage: null,
-      createdAt: DateTime.now(),
-    );
-
+    _tasks[taskIndex] = task.copyWith(status: TransferStatus.pending, progress: 0, errorMessage: null, createdAt: DateTime.now());
     notifyListeners();
-
-    // 重新执行任务
     if (task.type == TransferType.upload) {
       _executeUploadTask(_tasks[taskIndex]);
     } else {
@@ -162,229 +95,184 @@ class TransferProvider extends ChangeNotifier {
     }
   }
 
-  // 清除已完成或失败的任务
   void clearCompletedTasks() {
-    _tasks.removeWhere((task) =>
-        task.status == TransferStatus.completed ||
-        task.status == TransferStatus.failed ||
-        task.status == TransferStatus.cancelled);
+    _tasks.removeWhere((task) => task.status == TransferStatus.completed || task.status == TransferStatus.failed || task.status == TransferStatus.cancelled);
     notifyListeners();
   }
 
-  // 执行上传任务
   Future<void> _executeUploadTask(TransferTask task) async {
     final taskIndex = _tasks.indexWhere((t) => t.id == task.id);
     if (taskIndex == -1) return;
 
-    try {
-      // 更新任务状态为上传中
-      _tasks[taskIndex] = TransferTask(
-        id: task.id,
-        fileName: task.fileName,
-        filePath: task.filePath,
-        totalSize: task.totalSize,
-        dirId: task.dirId,
-        type: task.type,
-        status: TransferStatus.uploading,
-        progress: task.progress,
-        createdAt: task.createdAt,
-      );
-      notifyListeners();
+    int retryCount = 0;
+    const maxRetries = 3;
 
-      // 执行直接上传，不经过服务器
-      await _apiService.uploadFileDirectlyWithProgress(
-        task.filePath,
-        dirId: task.dirId,
-        onProgress: (progress) {
-          // 节流控制 - 限制进度更新频率
-          final now = DateTime.now();
-          final lastUpdate = _lastProgressUpdate;
-          final lastProgress = _lastProgressValues[task.id] ?? 0.0;
+    while (retryCount <= maxRetries) {
+      try {
+        debugPrint('=== 开始上传任务 ===');
+        debugPrint('任务ID: ${task.id}');
+        debugPrint('文件路径: ${task.filePath}');
+        debugPrint('目标文件夹: ${task.dirId}');
+        debugPrint('重试次数: $retryCount/$maxRetries');
 
-          // 如果进度变化小于1%且距离上次更新不足500ms，则跳过本次更新
-          if ((progress - lastProgress).abs() < 0.01 &&
-              lastUpdate != null &&
-              now.difference(lastUpdate).inMilliseconds < 500) {
-            return;
-          }
+        _tasks[taskIndex] = task.copyWith(status: TransferStatus.uploading);
+        notifyListeners();
 
-          // 更新进度
+        // 根据登录模式选择上传方法
+        if (_loginMode == 'local') {
+          // 本地模式：使用本地API服务上传
+          await _apiService.uploadFileDirectlyWithProgress(task.filePath, dirId: task.dirId, onProgress: (progress) {
+            final now = DateTime.now();
+            final lastUpdate = _lastProgressUpdate;
+            final lastProgress = _lastProgressValues[task.id] ?? 0.0;
+            if ((progress - lastProgress).abs() < 0.01 && lastUpdate != null && now.difference(lastUpdate).inMilliseconds < 500) return;
+            final currentTaskIndex = _tasks.indexWhere((t) => t.id == task.id);
+            if (currentTaskIndex == -1) return;
+            _tasks[currentTaskIndex] = task.copyWith(progress: progress);
+            _lastProgressUpdate = now;
+            _lastProgressValues[task.id] = progress;
+            notifyListeners();
+          });
+        } else {
+          // 服务器模式：使用API服务上传
+          await _apiService.uploadFileDirectlyWithProgress(task.filePath, dirId: task.dirId, onProgress: (progress) {
+            final now = DateTime.now();
+            final lastUpdate = _lastProgressUpdate;
+            final lastProgress = _lastProgressValues[task.id] ?? 0.0;
+            if ((progress - lastProgress).abs() < 0.01 && lastUpdate != null && now.difference(lastUpdate).inMilliseconds < 500) return;
+            final currentTaskIndex = _tasks.indexWhere((t) => t.id == task.id);
+            if (currentTaskIndex == -1) return;
+            _tasks[currentTaskIndex] = task.copyWith(progress: progress);
+            _lastProgressUpdate = now;
+            _lastProgressValues[task.id] = progress;
+            notifyListeners();
+          });
+        }
+
+        // 上传成功，跳出重试循环
+        debugPrint('上传任务成功完成');
+        break;
+      } catch (e) {
+        debugPrint('上传任务失败: $e');
+        retryCount++;
+
+        // 如果已达到最大重试次数，标记任务失败
+        if (retryCount > maxRetries) {
+          debugPrint('已达到最大重试次数，标记任务失败');
+
           final currentTaskIndex = _tasks.indexWhere((t) => t.id == task.id);
           if (currentTaskIndex == -1) return;
-
-          _tasks[currentTaskIndex] = TransferTask(
-            id: task.id,
-            fileName: task.fileName,
-            filePath: task.filePath,
-            totalSize: task.totalSize,
-            dirId: task.dirId,
-            type: task.type,
-            status: TransferStatus.uploading,
-            progress: progress,
-            createdAt: task.createdAt,
+          _tasks[currentTaskIndex] = task.copyWith(
+            status: TransferStatus.failed, 
+            errorMessage: '上传失败，已重试$maxRetries次。错误信息: ${e.toString()}', 
+            completedAt: DateTime.now()
           );
-
-          // 记录本次更新时间和进度
-          _lastProgressUpdate = now;
-          _lastProgressValues[task.id] = progress;
-
           notifyListeners();
-        },
-      );
+          return;
+        }
 
-      // 更新任务状态为已完成
-      final currentTaskIndex = _tasks.indexWhere((t) => t.id == task.id);
-      if (currentTaskIndex == -1) return;
-
-      _tasks[currentTaskIndex] = TransferTask(
-        id: task.id,
-        fileName: task.fileName,
-        filePath: task.filePath,
-        totalSize: task.totalSize,
-        dirId: task.dirId,
-        type: task.type,
-        status: TransferStatus.completed,
-        progress: 1.0,
-        createdAt: task.createdAt,
-        completedAt: DateTime.now(),
-      );
-      notifyListeners();
-
-      // 如果是上传任务，刷新文件列表
-      if (task.type == TransferType.upload) {
-        debugPrint('上传任务完成，准备刷新文件列表');
-        // 添加更长的延迟，确保服务器端已经处理完成
-        await Future.delayed(const Duration(seconds: 3));
-        
-        // 先尝试刷新当前文件夹
-        _fileProvider?.loadFiles(folderId: task.dirId, forceRefresh: true);
-        
-        // 等待更长时间
-        await Future.delayed(const Duration(seconds: 2));
-        
-        // 再次刷新，强制刷新
-        _fileProvider?.loadFiles(folderId: task.dirId, forceRefresh: true);
-        debugPrint('文件列表刷新完成');
+        // 指数退避算法计算延迟时间
+        final delay = Duration(seconds: (1 << (retryCount - 1)).clamp(1, 30));
+        debugPrint('等待 ${delay.inSeconds} 秒后重试...');
+        await Future.delayed(delay);
       }
-    } catch (e) {
-      // 更新任务状态为失败
-      final currentTaskIndex = _tasks.indexWhere((t) => t.id == task.id);
-      if (currentTaskIndex == -1) return;
+    }
 
-      _tasks[currentTaskIndex] = TransferTask(
-        id: task.id,
-        fileName: task.fileName,
-        filePath: task.filePath,
-        totalSize: task.totalSize,
-        dirId: task.dirId,
-        type: task.type,
-        status: TransferStatus.failed,
-        progress: task.progress,
-        errorMessage: e.toString(),
-        createdAt: task.createdAt,
-        completedAt: DateTime.now(),
-      );
-      notifyListeners();
+    final currentTaskIndex = _tasks.indexWhere((t) => t.id == task.id);
+    if (currentTaskIndex == -1) return;
+    _tasks[currentTaskIndex] = task.copyWith(status: TransferStatus.completed, progress: 1.0, completedAt: DateTime.now());
+    notifyListeners();
+
+    if (task.type == TransferType.upload) {
+      debugPrint('上传任务完成，准备刷新文件列表');
+      await Future.delayed(const Duration(seconds: 1));
+      // <--- 修正：使用命名参数调用 loadFiles
+      await _fileProvider?.loadFiles(folderId: task.dirId, forceRefresh: true);
+      debugPrint('文件列表刷新完成');
     }
   }
 
-  // 执行下载任务
   Future<void> _executeDownloadTask(TransferTask task) async {
     final taskIndex = _tasks.indexWhere((t) => t.id == task.id);
     if (taskIndex == -1) return;
 
-    try {
-      // 更新任务状态为下载中
-      _tasks[taskIndex] = TransferTask(
-        id: task.id,
-        fileName: task.fileName,
-        filePath: task.filePath,
-        totalSize: task.totalSize,
-        dirId: task.dirId,
-        type: task.type,
-        status: TransferStatus.downloading,
-        progress: task.progress,
-        createdAt: task.createdAt,
-      );
-      notifyListeners();
+    int retryCount = 0;
+    const maxRetries = 3;
 
-      // 执行下载
-      await _apiService.downloadFileWithProgress(
-        task.dirId, // 文件ID存储在dirId字段
-        task.fileName,
-        onProgress: (progress) {
-          // 节流控制 - 限制进度更新频率
-          final now = DateTime.now();
-          final lastUpdate = _lastProgressUpdate;
-          final lastProgress = _lastProgressValues[task.id] ?? 0.0;
+    while (retryCount <= maxRetries) {
+      try {
+        debugPrint('=== 开始下载任务 ===');
+        debugPrint('任务ID: ${task.id}');
+        debugPrint('文件ID: ${task.dirId}');
+        debugPrint('文件名: ${task.fileName}');
+        debugPrint('重试次数: $retryCount/$maxRetries');
 
-          // 如果进度变化小于1%且距离上次更新不足500ms，则跳过本次更新
-          if ((progress - lastProgress).abs() < 0.01 &&
-              lastUpdate != null &&
-              now.difference(lastUpdate).inMilliseconds < 500) {
-            return;
-          }
+        _tasks[taskIndex] = task.copyWith(status: TransferStatus.downloading);
+        notifyListeners();
 
-          // 更新进度
+        // 根据登录模式选择下载方法
+        if (_loginMode == 'local') {
+          // 本地模式：使用API服务下载
+          await _apiService.downloadFileWithProgress(task.dirId, task.fileName, onProgress: (progress) {
+            final now = DateTime.now();
+            final lastUpdate = _lastProgressUpdate;
+            final lastProgress = _lastProgressValues[task.id] ?? 0.0;
+            if ((progress - lastProgress).abs() < 0.01 && lastUpdate != null && now.difference(lastUpdate).inMilliseconds < 500) return;
+            final currentTaskIndex = _tasks.indexWhere((t) => t.id == task.id);
+            if (currentTaskIndex == -1) return;
+            _tasks[currentTaskIndex] = task.copyWith(progress: progress);
+            _lastProgressUpdate = now;
+            _lastProgressValues[task.id] = progress;
+            notifyListeners();
+          });
+        } else {
+          // 服务器模式：使用API服务下载
+          await _apiService.downloadFileWithProgress(task.dirId, task.fileName, onProgress: (progress) {
+            final now = DateTime.now();
+            final lastUpdate = _lastProgressUpdate;
+            final lastProgress = _lastProgressValues[task.id] ?? 0.0;
+            if ((progress - lastProgress).abs() < 0.01 && lastUpdate != null && now.difference(lastUpdate).inMilliseconds < 500) return;
+            final currentTaskIndex = _tasks.indexWhere((t) => t.id == task.id);
+            if (currentTaskIndex == -1) return;
+            _tasks[currentTaskIndex] = task.copyWith(progress: progress);
+            _lastProgressUpdate = now;
+            _lastProgressValues[task.id] = progress;
+            notifyListeners();
+          });
+        }
+
+        // 下载成功，跳出重试循环
+        debugPrint('下载任务成功完成');
+        break;
+      } catch (e) {
+        debugPrint('下载任务失败: $e');
+        retryCount++;
+
+        // 如果已达到最大重试次数，标记任务失败
+        if (retryCount > maxRetries) {
+          debugPrint('已达到最大重试次数，标记任务失败');
+
           final currentTaskIndex = _tasks.indexWhere((t) => t.id == task.id);
           if (currentTaskIndex == -1) return;
-
-          _tasks[currentTaskIndex] = TransferTask(
-            id: task.id,
-            fileName: task.fileName,
-            filePath: task.filePath,
-            totalSize: task.totalSize,
-            dirId: task.dirId,
-            type: task.type,
-            status: TransferStatus.downloading,
-            progress: progress,
-            createdAt: task.createdAt,
+          _tasks[currentTaskIndex] = task.copyWith(
+            status: TransferStatus.failed, 
+            errorMessage: '下载失败，已重试$maxRetries次。错误信息: ${e.toString()}', 
+            completedAt: DateTime.now()
           );
-
-          // 记录本次更新时间和进度
-          _lastProgressUpdate = now;
-          _lastProgressValues[task.id] = progress;
-
           notifyListeners();
-        },
-      );
+          return;
+        }
 
-      // 更新任务状态为已完成
-      final currentTaskIndex = _tasks.indexWhere((t) => t.id == task.id);
-      if (currentTaskIndex == -1) return;
-
-      _tasks[currentTaskIndex] = TransferTask(
-        id: task.id,
-        fileName: task.fileName,
-        filePath: task.filePath,
-        totalSize: task.totalSize,
-        dirId: task.dirId,
-        type: task.type,
-        status: TransferStatus.completed,
-        progress: 1.0,
-        createdAt: task.createdAt,
-        completedAt: DateTime.now(),
-      );
-      notifyListeners();
-    } catch (e) {
-      // 更新任务状态为失败
-      final currentTaskIndex = _tasks.indexWhere((t) => t.id == task.id);
-      if (currentTaskIndex == -1) return;
-
-      _tasks[currentTaskIndex] = TransferTask(
-        id: task.id,
-        fileName: task.fileName,
-        filePath: task.filePath,
-        totalSize: task.totalSize,
-        dirId: task.dirId,
-        type: task.type,
-        status: TransferStatus.failed,
-        progress: task.progress,
-        errorMessage: e.toString(),
-        createdAt: task.createdAt,
-        completedAt: DateTime.now(),
-      );
-      notifyListeners();
+        // 指数退避算法计算延迟时间
+        final delay = Duration(seconds: (1 << (retryCount - 1)).clamp(1, 30));
+        debugPrint('等待 ${delay.inSeconds} 秒后重试...');
+        await Future.delayed(delay);
+      }
     }
+
+    final currentTaskIndex = _tasks.indexWhere((t) => t.id == task.id);
+    if (currentTaskIndex == -1) return;
+    _tasks[currentTaskIndex] = task.copyWith(status: TransferStatus.completed, progress: 1.0, completedAt: DateTime.now());
+    notifyListeners();
   }
 }

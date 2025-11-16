@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http_parser/http_parser.dart';
 import 'api_client.dart';
+import 'global_network_interceptor.dart';
 
 class DirectUploadService {
   static final DirectUploadService _instance = DirectUploadService._internal();
@@ -141,8 +142,8 @@ class DirectUploadService {
       debugPrint('表单数据创建完成');
 
       // 4. 创建自定义Dio实例，直接上传到超星网盘
-      final dio = Dio();
-      
+      final dio = GlobalNetworkInterceptor().createDio();
+
       // 添加请求拦截器，用于调试
       dio.interceptors.add(InterceptorsWrapper(
         onRequest: (options, handler) {

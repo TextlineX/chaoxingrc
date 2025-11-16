@@ -1,7 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import '../widgets/custom_cloud_icon.dart';
+import '../widgets/custom_cloud_icons.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});

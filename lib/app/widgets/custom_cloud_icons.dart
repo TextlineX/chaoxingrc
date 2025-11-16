@@ -1,6 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+// 基础云朵图标
+class CustomCloudIcon extends StatelessWidget {
+  final double? size;
+  final Color? color;
+
+  const CustomCloudIcon({
+    Key? key,
+    this.size,
+    this.color,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return SvgPicture.asset(
+      'assets/icons/cloud_icon.svg',
+      width: size,
+      height: size,
+      colorFilter: color != null
+        ? ColorFilter.mode(color!, BlendMode.srcIn)
+        : null,
+    );
+  }
+}
+
 class CustomCloudUploadIcon extends StatelessWidget {
   final double? size;
   final Color? color;
@@ -21,8 +45,8 @@ class CustomCloudUploadIcon extends StatelessWidget {
           'assets/icons/cloud_icon.svg',
           width: size,
           height: size,
-          colorFilter: color != null 
-            ? ColorFilter.mode(color!, BlendMode.srcIn) 
+          colorFilter: color != null
+            ? ColorFilter.mode(color!, BlendMode.srcIn)
             : null,
         ),
         // 上传箭头
@@ -56,8 +80,8 @@ class CustomCloudDownloadIcon extends StatelessWidget {
           'assets/icons/cloud_icon.svg',
           width: size,
           height: size,
-          colorFilter: color != null 
-            ? ColorFilter.mode(color!, BlendMode.srcIn) 
+          colorFilter: color != null
+            ? ColorFilter.mode(color!, BlendMode.srcIn)
             : null,
         ),
         // 下载箭头

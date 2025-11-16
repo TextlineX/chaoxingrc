@@ -166,17 +166,19 @@ class _HomeScreenState extends State<HomeScreen>
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).padding.bottom, // 👈 关键修改：添加底部手势栏的安全区域填充
         ),
-        child: BottomNavBar(
-          currentIndex: _currentIndex,
-          onTap: (index) {
-            if (_currentIndex != index) {
-              _animationController.reset();
-              _animationController.forward();
-              setState(() {
-                _currentIndex = index;
-              });
-            }
-          },
+        child: Builder(
+          builder: (context) => BottomNavBar(
+            currentIndex: _currentIndex,
+            onTap: (index) {
+              if (_currentIndex != index) {
+                _animationController.reset();
+                _animationController.forward();
+                setState(() {
+                  _currentIndex = index;
+                });
+              }
+            },
+          ),
         ),
       ),
     );

@@ -1,43 +1,63 @@
-// 文件提供者 - 管理文件状态和操作
+// 兼容性Provider适配器 - 逐步迁移到core架构
 import 'package:flutter/material.dart';
-import 'package:flutter_downloader/flutter_downloader.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
+import 'package:provider/provider.dart';
 import '../services/file_api_service.dart';
+import '../services/local_file_service.dart';
 import '../models/file_item.dart';
-import 'transfer_provider.dart';
-import '../services/global_providers.dart';
+import '../providers/user_provider.dart';
 
+// 简化的FileProvider，使用依赖注入
 class FileProvider extends ChangeNotifier {
   final FileApiService _apiService = FileApiService();
-  List<FileItem> _files = [];
+  UserProvider? _userProvider;
+
+  List<FileItemModel> _files = [];
   bool _isLoading = false;
   String? _error;
   String _currentFolderId = '-1';
   List<String> _pathHistory = ['-1'];
   int _totalSize = 0;
   bool _isInitialized = false;
-
-  // 提供对_apiService的安全访问
-  FileApiService get apiService => _apiService;
-
-  // 设置当前文件夹和路径历史
-  void setCurrentFolder(String folderId, List<String> pathHistory, {bool notify = true}) {
-    _currentFolderId = folderId;
-    _pathHistory = List.from(pathHistory);
-    if (notify) notifyListeners();
-  }
-
-  // 多选功能相关
   bool _isSelectionMode = false;
   Set<String> _selectedFileIds = {};
 
-  // 初始化方法
-  Future<void> init({bool notify = true}) async {
+  // Getters
+  List<FileItemModel> get files => List.unmodifiable(_files);
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+  String get currentFolderId => _currentFolderId;
+  List<String> get pathHistory => List.unmodifiable(_pathHistory);
+  int get totalSize => _totalSize;
+  bool get isInitialized => _isInitialized;
+  bool get isSelectionMode => _isSelectionMode;
+  Set<String> get selectedFileIds => Set.unmodifiable(_selectedFileIds);
+  int get selectedCount => _selectedFileIds.length;
+  bool get isAllSelected => _files.isNotEmpty && _selectedFileIds.length == _files.length;
+
+  // 获取UserProvider的getter
+  UserProvider? get userProvider => _userProvider;
+
+  String get formattedTotalSize {
+    if (_totalSize < 1024) return '${_totalSize}B';
+    if (_totalSize < 1024 * 1024) return '${(_totalSize / 1024).toStringAsFixed(1)}KB';
+    if (_totalSize < 1024 * 1024 * 1024) return '${(_totalSize / (1024 * 1024)).toStringAsFixed(1)}MB';
+    return '${(_totalSize / (1024 * 1024 * 1024)).toStringAsFixed(1)}GB';
+  }
+
+  // 兼容旧的初始化方法
+  Future<void> init(BuildContext? context, {bool notify = true}) async {
     if (_isInitialized) return;
 
+    if (context != null) {
+      _userProvider = Provider.of<UserProvider>(context, listen: false);
+    }
+
     try {
-      await _apiService.init();
+      // 初始化API服务
+      if (context != null) {
+        await _apiService.init(context: context);
+      }
+
       _isInitialized = true;
       if (notify) notifyListeners();
     } catch (e) {
@@ -47,296 +67,196 @@ class FileProvider extends ChangeNotifier {
     }
   }
 
-  // Getters
-  List<FileItem> get files => List.unmodifiable(_files);
-  bool get isLoading => _isLoading;
-  String? get error => _error;
-  String get currentFolderId => _currentFolderId;
-  List<String> get pathHistory => List.unmodifiable(_pathHistory);
-  int get totalSize => _totalSize;
-  bool get isSelectionMode => _isSelectionMode;
-  Set<String> get selectedFileIds => Set.unmodifiable(_selectedFileIds);
-  int get selectedCount => _selectedFileIds.length;
-  bool get isAllSelected => _files.isNotEmpty && _selectedFileIds.length == _files.length;
-
-  // 格式化总大小
-  String get formattedTotalSize {
-    if (_totalSize < 1024) return '${_totalSize}B';
-    if (_totalSize < 1024 * 1024) return '${(_totalSize / 1024).toStringAsFixed(1)}KB';
-    if (_totalSize < 1024 * 1024 * 1024) return '${(_totalSize / (1024 * 1024)).toStringAsFixed(1)}MB';
-    return '${(_totalSize / (1024 * 1024 * 1024)).toStringAsFixed(1)}GB';
-  }
-
-  // 加载文件列表
-  Future<void> loadFiles({String folderId = '-1', bool notify = true, bool forceRefresh = false}) async {
-    // 确保API服务已初始化
+  // 兼容旧的loadFiles方法
+  Future<void> loadFiles({String? folderId, bool notify = true, bool forceRefresh = false}) async {
     if (!_isInitialized) {
-      await init(notify: false);
+      throw Exception("FileProvider 未初始化");
     }
 
-    debugPrint('LoadFiles: folderId=$folderId, currentPathHistory=$_pathHistory, forceRefresh=$forceRefresh');
-
+    final targetFolderId = folderId ?? _currentFolderId;
     _setLoading(true, notify: false);
+
     try {
-      // 添加时间戳参数，防止缓存
-      final timestamp = forceRefresh ? DateTime.now().millisecondsSinceEpoch : null;
-      final response = await _apiService.getFiles(folderId: folderId, timestamp: timestamp);
-      
-      debugPrint('API响应: $response');
+      List<FileItemModel> loadedFiles = [];
+      final loginMode = _userProvider?.loginMode ?? 'server';
 
-      if (response['success'] != true || response['data'] is! List) {
-        throw Exception(response['message'] ?? '加载文件列表失败');
-      }
-
-      final List<dynamic> filesList = response['data'] as List;
-      
-      // 添加详细的错误处理，逐个转换文件项
-      _files = [];
-      for (int i = 0; i < filesList.length; i++) {
+      if (loginMode == 'local') {
+        debugPrint('加载本地文件列表: folderId=$targetFolderId');
         try {
-          final json = filesList[i];
-          if (json is Map<String, dynamic>) {
-            final fileItem = FileItem.fromJson(json);
-            _files.add(fileItem);
+          // 确保LocalFileService已初始化
+          final localFileService = LocalFileService();
+          // 使用公共方法检查初始化状态，或者直接初始化
+          await localFileService.init();
+
+          final localFiles = await localFileService.getFiles(folderId: targetFolderId);
+          loadedFiles = localFiles.map((f) => FileItemModel.withItemType(
+            id: f.id,
+            name: f.name,
+            type: f.type,
+            size: f.size,
+            uploadTime: f.uploadTime,
+            itemType: f.isFolder ? FileItemType.folder : FileItemType.file,
+            parentId: f.parentId,
+          )).toList();
+
+          debugPrint('本地模式成功加载 ${loadedFiles.length} 个文件');
+        } catch (e) {
+          debugPrint('本地模式加载文件列表失败: $e');
+          // 提供用户友好的错误信息
+          if (e.toString().contains('认证信息缺失')) {
+            _error = '请先在认证配置页面设置有效的Cookie和BSID';
           } else {
-            debugPrint('警告: filesList[$i] 不是 Map<String, dynamic> 类型，实际类型: ${json.runtimeType}');
+            _error = '本地模式加载失败: $e';
           }
-        } catch (e, stackTrace) {
-          debugPrint('转换 filesList[$i] 时出错: $e');
-          debugPrint('错误堆栈: $stackTrace');
-          if (i < filesList.length) {
-            debugPrint('有问题的数据: ${filesList[i]}');
+          throw e; // 重新抛出以便上层处理
+        }
+      } else {
+        debugPrint('加载服务器文件列表: folderId=$targetFolderId, forceRefresh=$forceRefresh');
+        final timestamp = forceRefresh ? DateTime.now().millisecondsSinceEpoch : null;
+        final response = await _apiService.getFiles(folderId: targetFolderId, timestamp: timestamp);
+
+        if (response['success'] == true && response['data'] is List) {
+          final List<dynamic> filesList = response['data'] as List;
+          for (final json in filesList) {
+            if (json is Map<String, dynamic>) {
+              try {
+                loadedFiles.add(FileItemModel.fromJson(json));
+              } catch (e) {
+                debugPrint('转换文件时出错: $e');
+              }
+            }
           }
-          // 继续处理其他文件项，不中断整个过程
+        } else {
+          throw Exception(response['message'] ?? '加载文件列表失败');
         }
       }
-      
-      _currentFolderId = folderId;
+
+      _files = loadedFiles;
+      _currentFolderId = targetFolderId;
       _error = null;
+      _calculateTotalSize();
 
-      debugPrint('LoadFiles completed: folderId=$folderId, filesCount=${_files.length}');
-      
-      // 打印前几个文件的信息，用于调试
-      if (_files.isNotEmpty) {
-        debugPrint('前3个文件:');
-        for (int i = 0; i < _files.length && i < 3; i++) {
-          debugPrint('  ${i+1}. ${_files[i].name} (ID: ${_files[i].id})');
-        }
-      }
-
-      // 确保总是通知监听器，以便更新UI
-      notifyListeners();
-    } catch (e, stackTrace) {
+      if (notify) notifyListeners();
+    } catch (e) {
       _error = e.toString();
-      debugPrint('LoadFiles error: $e');
-      debugPrint('LoadFiles error stack trace: $stackTrace');
-      notifyListeners();
+      if (notify) notifyListeners();
     } finally {
-      _setLoading(false, notify: false);
+      _setLoading(false, notify: notify);
     }
   }
 
-  // 获取文件下载链接
   Future<String> getDownloadUrl(String fileId) async {
-    try {
-      debugPrint('FileProvider: 开始获取下载链接，文件ID: $fileId');
+    if (!_isInitialized) {
+      throw Exception("FileProvider 未初始化");
+    }
+
+    final loginMode = _userProvider?.loginMode ?? 'server';
+    if (loginMode == 'local') {
+      return await LocalFileService().getFilePath(fileId);
+    } else {
       final response = await _apiService.getDownloadUrl(fileId);
-      debugPrint('FileProvider: 获取下载链接响应: $response');
-
       if (response['success'] != true) {
-        final errorMessage = response['message'] ?? '请求失败';
-        debugPrint('FileProvider: 请求失败: $errorMessage');
-        throw Exception('请求失败: $errorMessage');
+        throw Exception(response['message'] ?? '获取下载链接失败');
       }
-
-      // 检查data字段是否存在
-      if (!response.containsKey('data')) {
-        debugPrint('FileProvider: 响应中没有data字段');
-        throw Exception('响应格式错误: 缺少data字段');
-      }
-
-      final data = response['data'];
-      if (!data.containsKey('downloadUrl')) {
-        final errorMessage = data['message'] ?? '未知错误';
-        debugPrint('FileProvider: 获取下载链接失败: $errorMessage');
-        throw Exception('获取下载链接失败: $errorMessage');
-      }
-
-      final downloadUrl = data['downloadUrl'];
-      debugPrint('FileProvider: 获取到的下载链接: $downloadUrl');
-      return downloadUrl;
-    } catch (e) {
-      debugPrint('FileProvider: 获取下载链接时发生错误: $e');
-      _error = e.toString();
-      rethrow;
+      return response['data']['downloadUrl'];
     }
   }
 
-  // 下载文件到本地
   Future<String> downloadFile(String fileId, String fileName) async {
-    try {
-      debugPrint('FileProvider: 开始下载文件，文件ID: $fileId, 文件名: $fileName');
-      
-      // 获取文件大小
-      final files = _files.where((file) => file.id == fileId);
-      if (files.isEmpty) {
-        throw Exception('找不到文件');
-      }
-      final file = files.first;
-      final fileSize = file.size;
-      
-      // 使用全局TransferProvider添加下载任务
-      final transferProvider = GlobalProviders.transferProvider;
-      transferProvider.setFileProvider(this);
-      final taskId = transferProvider.addDownloadTask(
-        fileId: fileId,
-        fileName: fileName,
-        fileSize: fileSize,
-      );
-      
-      debugPrint('FileProvider: 下载任务已创建，任务ID: $taskId');
-      
-      // 返回文件保存路径（实际路径由TransferProvider处理）
-      final dir = await getApplicationDocumentsDirectory();
-      final savePath = '${dir.path}/$fileName';
-      
-      return savePath;
-    } catch (e) {
-      debugPrint('FileProvider: 下载文件时发生错误: $e');
-      _error = e.toString();
-      rethrow;
+    if (!_isInitialized) {
+      throw Exception("FileProvider 未初始化");
+    }
+
+    final loginMode = _userProvider?.loginMode ?? 'server';
+    if (loginMode == 'local') {
+      return await LocalFileService().copyFileToDownloads(fileId);
+    } else {
+      final downloadUrl = await getDownloadUrl(fileId);
+      return await _apiService.downloadFile(fileId, fileName);
     }
   }
 
-  // 创建文件夹
   Future<void> createFolder(String name, {String parentId = '-1'}) async {
-    _setLoading(true);
-    try {
-      final response = await _apiService.createFolder(name, parentId: parentId);
+    if (!_isInitialized) {
+      throw Exception("FileProvider 未初始化");
+    }
 
+    final loginMode = _userProvider?.loginMode ?? 'server';
+    if (loginMode == 'local') {
+      await LocalFileService().createFolder(name, parentId: parentId);
+    } else {
+      final response = await _apiService.createFolder(name, parentId: parentId);
       if (response['success'] != true) {
         throw Exception(response['message'] ?? '创建文件夹失败');
       }
-
-      await loadFiles(folderId: _currentFolderId);
-    } catch (e) {
-      _error = e.toString();
-      rethrow;
-    } finally {
-      _setLoading(false);
     }
+
+    await loadFiles(folderId: parentId);
   }
 
-  // 上传文件
   Future<void> uploadFile(String filePath, {String dirId = '-1'}) async {
-    _setLoading(true);
-    try {
-      // 使用直接上传功能，不经过服务器
-      debugPrint('开始上传文件: $filePath 到文件夹: $dirId');
-      final response = await _apiService.uploadFileDirectly(filePath, dirId: dirId);
-      
-      debugPrint('上传响应: $response');
-      
+    if (!_isInitialized) {
+      throw Exception("FileProvider 未初始化");
+    }
+
+    final loginMode = _userProvider?.loginMode ?? 'server';
+    if (loginMode == 'local') {
+      await LocalFileService().uploadFile(filePath, dirId: dirId);
+    } else {
+      final response = await _apiService.uploadFile(filePath, dirId: dirId);
       if (response['success'] != true) {
         throw Exception(response['message'] ?? '上传文件失败');
       }
-      
-      debugPrint('文件上传成功，开始刷新文件列表');
-      
-      // 添加更长的延迟，确保服务器端已经处理完成
-      await Future.delayed(const Duration(seconds: 3));
-      
-      // 先尝试刷新当前文件夹
-      await loadFiles(folderId: _currentFolderId, forceRefresh: true);
-      
-      // 如果文件数量没有增加，再尝试一次
-      final initialCount = _files.length;
-      debugPrint('第一次刷新后文件数量: $initialCount');
-      
-      // 等待更长时间
-      await Future.delayed(const Duration(seconds: 2));
-      
-      // 再次刷新，强制刷新
-      await loadFiles(folderId: _currentFolderId, forceRefresh: true);
-      debugPrint('第二次刷新后文件数量: ${_files.length}');
-      debugPrint('文件列表刷新完成');
-    } catch (e) {
-      debugPrint('上传文件出错: $e');
-      _error = e.toString();
-      rethrow;
-    } finally {
-      _setLoading(false);
     }
+
+    await loadFiles(folderId: dirId);
   }
 
-  // 删除文件或文件夹
   Future<void> deleteResource(String resourceId) async {
-    _setLoading(true);
-    try {
-      final response = await _apiService.deleteResource(resourceId);
+    if (!_isInitialized) {
+      throw Exception("FileProvider 未初始化");
+    }
 
+    final loginMode = _userProvider?.loginMode ?? 'server';
+    if (loginMode == 'local') {
+      await LocalFileService().deleteResource(resourceId);
+    } else {
+      final response = await _apiService.deleteResource(resourceId);
       if (response['success'] != true) {
         throw Exception(response['message'] ?? '删除失败');
       }
-
-      await loadFiles(folderId: _currentFolderId);
-    } catch (e) {
-      _error = e.toString();
-      rethrow;
-    } finally {
-      _setLoading(false);
     }
+
+    await loadFiles();
   }
 
-  // 进入文件夹
-  void enterFolder(FileItem folder) {
+  void enterFolder(FileItemModel folder) {
     if (!folder.isFolder) return;
-    _pathHistory.add(folder.id);
-    loadFiles(folderId: folder.id);
-    notifyListeners(); // 确保UI更新
+
+    final newPathHistory = List<String>.from(_pathHistory);
+    newPathHistory.add(folder.id);
+    navigateToFolder(folder.id, newPathHistory);
   }
 
-  // 返回上级目录
   void goBack() {
     if (_pathHistory.length <= 1) return;
-    _pathHistory.removeLast();
-    loadFiles(folderId: _pathHistory.last);
+
+    final newPathHistory = List<String>.from(_pathHistory);
+    newPathHistory.removeLast();
+    final parentFolderId = newPathHistory.last;
+    navigateToFolder(parentFolderId, newPathHistory);
   }
 
-  // 返回根目录
   void goToRoot() {
-    _pathHistory = ['-1'];
-    loadFiles(folderId: '-1');
+    navigateToFolder('-1', ['-1']);
   }
 
-  // 直接导航到特定文件夹（用于路径导航）
   void navigateToFolder(String folderId, List<String> newPathHistory) {
-    debugPrint('NavigateToFolder: folderId=$folderId, newPathHistory=$newPathHistory');
-    _pathHistory = List.from(newPathHistory);
+    _currentFolderId = folderId;
+    _pathHistory = List.unmodifiable(newPathHistory);
     loadFiles(folderId: folderId);
   }
 
-  // 计算总大小
-  Future<void> calculateTotalSize({bool notify = true}) async {
-    _totalSize = 0;
-    try {
-      final response = await _apiService.getFileIndex();
-      if (response['data'] is List) {
-        final List<dynamic> filesList = response['data'] as List;
-        for (var json in filesList) {
-          final file = FileItem.fromJson(json);
-          if (!file.isFolder) {
-            _totalSize += file.size;
-          }
-        }
-      }
-    } catch (e) {
-      _error = e.toString();
-    }
-    if (notify) notifyListeners();
-  }
-
-  // 多选功能方法
   void toggleSelectionMode() {
     _isSelectionMode = !_isSelectionMode;
     if (!_isSelectionMode) {
@@ -358,168 +278,102 @@ class FileProvider extends ChangeNotifier {
     if (isAllSelected) {
       _selectedFileIds.clear();
     } else {
-      _selectedFileIds = _files.map((file) => file.id).toSet();
+      _selectedFileIds.clear();
+      for (final file in _files) {
+        if (!file.isFolder) {
+          _selectedFileIds.add(file.id);
+        }
+      }
     }
     notifyListeners();
   }
 
-  // 批量删除选中的文件
+  void clearSelection() {
+    _selectedFileIds.clear();
+    _isSelectionMode = false;
+    notifyListeners();
+  }
+
   Future<void> deleteSelectedFiles() async {
-    if (_selectedFileIds.isEmpty) return;
+    if (!_isInitialized || _selectedFileIds.isEmpty) return;
 
-    _setLoading(true);
-    try {
-      // 确保API服务已初始化 - 但由于_client是私有字段，我们无法直接访问
-      // 这个初始化步骤应该在应用启动时完成，而不是在这里
-      // 如果需要确保初始化，可以考虑使用全局单例或依赖注入
-
-      // 创建所有删除任务的Future列表
-      List<Future<Map<String, dynamic>>> deleteTasks = [];
-      for (final fileId in _selectedFileIds) {
-        deleteTasks.add(_apiService.deleteResource(fileId));
+    final loginMode = _userProvider?.loginMode ?? 'server';
+    if (loginMode == 'local') {
+      for (final fileId in List.from(_selectedFileIds)) {
+        await LocalFileService().deleteResource(fileId);
       }
-
-      // 等待所有删除任务完成
-      List<Map<String, dynamic>> results = await Future.wait(deleteTasks);
-
-      int successCount = 0;
-      int failCount = 0;
-      List<String> failedFileNames = [];
-
-      // 统计成功和失败的数量
-      for (int i = 0; i < results.length; i++) {
-        final response = results[i];
-        if (response['success'] == true) {
-          successCount++;
-        } else {
-          failCount++;
-          // 尝试获取失败文件名
-          final fileId = _selectedFileIds.elementAt(i);
-          final file = _files.firstWhere((f) => f.id == fileId, orElse: () => FileItem(
-            id: fileId,
-            name: '未知文件',
-            type: '未知',
-            size: 0,
-            uploadTime: DateTime.now(),
-            isFolder: false
-          ));
-          failedFileNames.add(file.name);
+    } else {
+      for (final fileId in List.from(_selectedFileIds)) {
+        final response = await _apiService.deleteResource(fileId);
+        if (response['success'] != true) {
+          throw Exception(response['message'] ?? '删除失败');
         }
       }
-
-      // 清除选择状态
-      _selectedFileIds.clear();
-      _isSelectionMode = false;
-
-      // 重新加载文件列表
-      await loadFiles(folderId: _currentFolderId);
-
-      // 如果有失败，抛出详细错误
-      if (failCount > 0) {
-        final failedFilesText = failedFileNames.take(3).join(', ');
-        final moreText = failedFileNames.length > 3 ? ' 等${failedFileNames.length}个文件' : '';
-        throw Exception('成功删除 $successCount 个文件，删除失败 $failCount 个文件: $failedFilesText$moreText');
-      }
-    } catch (e) {
-      _error = e.toString();
-      rethrow;
-    } finally {
-      _setLoading(false);
     }
+
+    clearSelection();
+    await loadFiles();
   }
 
-  // 直接获取文件夹列表，不修改全局状态
-  Future<List<FileItem>> loadFoldersOnly(String folderId) async {
-    try {
-      // 确保API服务已初始化
-      if (!_isInitialized) {
-        await init(notify: false);
-      }
+  Future<List<FileItemModel>> loadFoldersOnly({String folderId = '-1'}) async {
+    if (!_isInitialized) {
+      return [];
+    }
 
+    final loginMode = _userProvider?.loginMode ?? 'server';
+    if (loginMode == 'local') {
+      final localFolders = await LocalFileService().getFoldersOnly(folderId: folderId);
+      return localFolders.map((f) => FileItemModel.withItemType(
+        id: f.id,
+        name: f.name,
+        type: f.type,
+        size: f.size,
+        uploadTime: f.uploadTime,
+        itemType: FileItemType.folder,
+        parentId: f.parentId,
+      )).toList();
+    } else {
       final response = await _apiService.getFiles(folderId: folderId);
-
       if (response['success'] != true || response['data'] is! List) {
-        throw Exception(response['message'] ?? '获取文件夹列表失败');
+        return [];
       }
 
+      final List<FileItemModel> folders = [];
       final List<dynamic> filesList = response['data'] as List;
-      // 只返回文件夹，不修改全局状态
-      return filesList.map((json) => FileItem.fromJson(json)).where((file) => file.isFolder).toList();
-    } catch (e) {
-      debugPrint('LoadFoldersOnly error: $e');
-      rethrow;
+      for (final json in filesList) {
+        if (json is Map<String, dynamic>) {
+          try {
+            final fileItem = FileItemModel.fromJson(json);
+            if (fileItem.isFolder) {
+              folders.add(fileItem);
+            }
+          } catch (e) {
+            debugPrint('转换文件夹时出错: $e');
+          }
+        }
+      }
+      return folders;
     }
   }
 
-  // 移动资源到指定文件夹
   Future<void> moveResources(List<String> resourceIds, String targetId) async {
-    if (resourceIds.isEmpty) return;
+    if (!_isInitialized) return;
 
-    _setLoading(true);
-    try {
-      // 创建所有移动任务的Future列表
-      List<Future<Map<String, dynamic>>> moveTasks = [];
+    final loginMode = _userProvider?.loginMode ?? 'server';
+    if (loginMode == 'local') {
       for (final resourceId in resourceIds) {
-        // 检查资源是否是文件夹
-        final file = files.firstWhere((f) => f.id == resourceId, orElse: () => FileItem(
-          id: resourceId,
-          name: '',
-          type: '',
-          size: 0,
-          isFolder: false,
-          uploadTime: DateTime.now(),
-        ));
-
-        moveTasks.add(_apiService.moveResource(resourceId, targetId, isFolder: file.isFolder));
+        await LocalFileService().moveResource(resourceId, targetId);
       }
-
-      // 等待所有移动任务完成
-      List<Map<String, dynamic>> results = await Future.wait(moveTasks);
-
-      int successCount = 0;
-      int failCount = 0;
-      List<String> failedFileNames = [];
-
-      // 统计成功和失败的数量
-      for (int i = 0; i < results.length; i++) {
-        final response = results[i];
-        if (response['success'] == true) {
-          successCount++;
-        } else {
-          failCount++;
-          // 尝试获取失败资源名
-          final resourceId = resourceIds[i];
-          final file = _files.firstWhere((f) => f.id == resourceId, orElse: () => FileItem(
-            id: resourceId,
-            name: '未知文件',
-            type: '未知',
-            size: 0,
-            uploadTime: DateTime.now(),
-            isFolder: false
-          ));
-          failedFileNames.add(file.name);
+    } else {
+      for (final resourceId in resourceIds) {
+        final response = await _apiService.moveResource(resourceId, targetId);
+        if (response['success'] != true) {
+          throw Exception(response['message'] ?? '移动失败');
         }
       }
-
-      // 清除选择状态
-      _selectedFileIds.clear();
-      _isSelectionMode = false;
-
-      // 重新加载文件列表
-      await loadFiles(folderId: _currentFolderId);
-
-      // 如果有失败，抛出详细错误
-      if (failCount > 0) {
-        final failedFilesText = failedFileNames.take(3).join(', ');
-        final moreText = failedFileNames.length > 3 ? ' 等${failedFileNames.length}个文件' : '';
-        throw Exception('成功移动 $successCount 个文件，移动失败 $failCount 个文件: $failedFilesText$moreText');
-      }
-    } catch (e) {
-      _error = e.toString();
-      rethrow;
-    } finally {
-      _setLoading(false);
     }
+
+    await loadFiles();
   }
 
   void clearError() {
@@ -530,5 +384,41 @@ class FileProvider extends ChangeNotifier {
   void _setLoading(bool loading, {bool notify = true}) {
     _isLoading = loading;
     if (notify) notifyListeners();
+  }
+
+  void _calculateTotalSize() {
+    _totalSize = _files
+        .where((file) => !file.isFolder)
+        .fold(0, (sum, file) => sum + file.size);
+  }
+
+  void refresh() {
+    if (_isInitialized) {
+      loadFiles(folderId: _currentFolderId, forceRefresh: true);
+    }
+  }
+
+  // 兼容性方法 - 计算总大小
+  Future<void> calculateTotalSize() async {
+    _calculateTotalSize();
+    notifyListeners();
+  }
+
+  // 兼容性方法 - 设置当前文件夹
+  void setCurrentFolder(String folderId, List<String> pathHistory, {bool notify = true}) {
+    _currentFolderId = folderId;
+    _pathHistory = List.unmodifiable(pathHistory);
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  // 兼容性getter - 获取API服务
+  FileApiService get apiService => _apiService;
+
+  // 更新登录模式 - 用于初始化后重新设置正确的登录模式
+  Future<void> updateLoginMode(String loginMode) async {
+    debugPrint('FileProvider: 更新登录模式为 $loginMode');
+    await _apiService.init(context: null); // 重新初始化API服务，从SharedPreferences读取最新的登录模式
   }
 }

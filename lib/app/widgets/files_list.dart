@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/file_provider.dart';
 import '../services/files_operations_service.dart';
 import '../utils/file_operations.dart';
+import '../models/file_item.dart';
 import 'file_item_widget.dart';
 
 class FilesList extends StatelessWidget {
@@ -43,7 +44,15 @@ class FilesList extends StatelessWidget {
             itemBuilder: (context, index) {
               final file = provider.files[index];
               return FileItemWidget(
-                file: file,
+                file: FileItem(
+                  id: file.id,
+                  name: file.name,
+                  type: file.type,
+                  size: file.size,
+                  uploadTime: file.uploadTime,
+                  isFolder: file.isFolder,
+                  parentId: file.parentId,
+                ),
                 index: index,
                 isSelected: provider.selectedFileIds.contains(file.id),
                 isSelectionMode: provider.isSelectionMode,
@@ -54,7 +63,15 @@ class FilesList extends StatelessWidget {
                     provider.toggleFileSelection(file.id);
                   }
                 },
-                onDelete: () => FilesOperationsService.showDeleteConfirmation(context, provider, file),
+                onDelete: () => FilesOperationsService.showDeleteConfirmation(context, provider, FileItem(
+                  id: file.id,
+                  name: file.name,
+                  type: file.type,
+                  size: file.size,
+                  uploadTime: file.uploadTime,
+                  isFolder: file.isFolder,
+                  parentId: file.parentId,
+                )),
                 onTap: () async {
                   if (provider.isSelectionMode) {
                     provider.toggleFileSelection(file.id);
@@ -65,7 +82,15 @@ class FilesList extends StatelessWidget {
                     provider.enterFolder(file);
                   } else {
                     // 调用文件点击处理方法
-                    FileOperations.handleFileTap(context, provider, file);
+                    FileOperations.handleFileTap(context, provider, FileItem(
+                      id: file.id,
+                      name: file.name,
+                      type: file.type,
+                      size: file.size,
+                      uploadTime: file.uploadTime,
+                      isFolder: file.isFolder,
+                      parentId: file.parentId,
+                    ));
                   }
                 },
               );

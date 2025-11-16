@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/user_provider.dart';
 import '../widgets/custom_text_field.dart';
 
@@ -25,8 +26,16 @@ class _AuthConfigScreenState extends State<AuthConfigScreen> {
 
   Future<void> _loadAuthConfig() async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
-    // 这里可以从SharedPreferences或其他存储中加载已保存的认证信息
-    // 暂时留空，后续可以添加实际的加载逻辑
+    // 从SharedPreferences加载本地模式的认证信息（与服务器模式独立）
+    final prefs = await SharedPreferences.getInstance();
+
+    // 加载本地模式的Cookie和BSID（使用不同的键名）
+    final cookie = prefs.getString('local_auth_cookie') ?? '';
+    final bsid = prefs.getString('local_auth_bsid') ?? '';
+
+    // 设置到控制器中
+    _cookieController.text = cookie;
+    _bsidController.text = bsid;
   }
 
   @override
@@ -74,11 +83,35 @@ class _AuthConfigScreenState extends State<AuthConfigScreen> {
               ),
               const SizedBox(height: 32),
 
+              Card(
+                margin: const EdgeInsets.only(bottom: 16),
+                color: Colors.blue.shade50,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info, color: Colors.blue.shade600),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          '请从浏览器开发者工具中获取完整的Cookie和BSID信息',
+                          style: TextStyle(
+                            color: Colors.blue.shade600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
               CustomTextField(
                 controller: _cookieController,
                 labelText: 'Cookie',
-                hintText: '请输入Cookie',
+                hintText: '请输入从浏览器获取的完整Cookie',
                 prefixIcon: Icons.cookie,
+                maxLines: 3,
               ),
               const SizedBox(height: 16),
 
@@ -111,12 +144,28 @@ class _AuthConfigScreenState extends State<AuthConfigScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 保存认证信息到SharedPreferences或其他存储
-      // 这里可以添加实际的保存逻辑
-      
+      // 保存认证信息到SharedPreferences（本地模式专用）
+      final prefs = await SharedPreferences.getInstance();
+
+      // 保存本地模式的Cookie和BSID（使用不同的键名）
+      if (_cookieController.text.isNotEmpty) {
+        await prefs.setString('local_auth_cookie', _cookieController.text);
+        debugPrint('已保存Cookie: ${_cookieController.text.substring(0, _cookieController.text.length > 20 ? 20 : _cookieController.text.length)}...');
+      }
+
+      if (_bsidController.text.isNotEmpty) {
+        await prefs.setString('local_auth_bsid', _bsidController.text);
+        debugPrint('已保存BSID: ${_bsidController.text}');
+      }
+
+      // 重新初始化LocalApiService以加载新的认证信息
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      await userProvider.updateLocalAuth(_cookieController.text, _bsidController.text);
+
       // 跳转到主页
       Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
     } catch (e) {
+      debugPrint('保存认证配置失败: $e');
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('保存失败: $e')));
     } finally {

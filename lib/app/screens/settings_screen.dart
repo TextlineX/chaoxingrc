@@ -7,7 +7,9 @@ import '../widgets/theme_selector.dart';
 import '../widgets/color_picker.dart';
 import '../services/download_path_service.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:file_selector/file_selector.dart';
 import './login_screen.dart';
+import './debug_control_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -17,9 +19,19 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  String _currentDownloadPath = '';
+
   @override
   void initState() {
     super.initState();
+    _loadCurrentDownloadPath();
+  }
+
+  Future<void> _loadCurrentDownloadPath() async {
+    final path = await DownloadPathService.getDownloadPath();
+    setState(() {
+      _currentDownloadPath = path;
+    });
   }
 
   @override
@@ -48,7 +60,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 ListTile(
                   title: const Text('下载路径'),
-                  subtitle: const Text('设置文件下载保存路径'),
+                  subtitle: Text(_currentDownloadPath.isNotEmpty
+                      ? _currentDownloadPath
+                      : '设置文件下载保存路径'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     _showDownloadPathDialog(context);
@@ -124,13 +138,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                     SwitchListTile(
                       title: const Text('开发者模式'),
-                      subtitle: const Text('开启后可以查看调试信息'),
+                      subtitle: Text('开启后可以查看调试信息 (当前模式: ${userProvider.loginMode == 'server' ? '服务器模式' : '独立模式'})'),
                       value: userProvider.isDeveloperMode,
                       // 所有模式下都可以切换开发者模式
                       onChanged: (value) {
                         userProvider.toggleDeveloperMode();
                       },
                     ),
+                    // 只在开发者模式下显示调试控制按钮
+                    if (userProvider.isDeveloperMode) ...[
+                      ListTile(
+                        title: const Text('调试输出控制'),
+                        subtitle: const Text('管理各类调试输出的开关'),
+                        leading: const Icon(Icons.bug_report_outlined),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const DebugControlScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      const Divider(height: 1),
+                    ],
                     const Divider(height: 1),
                     ListTile(
                       title: const Text('登录模式'),
@@ -219,6 +251,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: () async {
                   await DownloadPathService.setDownloadPath(DownloadPathService.systemDownloadPath);
                   Navigator.pop(context);
+                  _loadCurrentDownloadPath();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('已设置为系统下载目录')),
                   );
@@ -232,9 +265,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   final appDir = await getApplicationDocumentsDirectory();
                   await DownloadPathService.setDownloadPath(appDir.path);
                   Navigator.pop(context);
+                  _loadCurrentDownloadPath();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('已设置为应用内部目录')),
                   );
+                },
+              ),
+              ListTile(
+                title: const Text('自定义路径'),
+                subtitle: const Text('选择任意文件夹作为下载目录'),
+                leading: const Icon(Icons.folder_open),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _selectCustomDownloadPath(context);
                 },
               ),
             ],
@@ -250,6 +293,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       },
     );
+  }
+
+  Future<void> _selectCustomDownloadPath(BuildContext context) async {
+    try {
+      final String? selectedPath = await getDirectoryPath();
+      if (selectedPath != null && selectedPath.isNotEmpty) {
+        // 检查路径是否存在，不存在则创建
+        final pathExists = await DownloadPathService.pathExists(selectedPath);
+        if (!pathExists) {
+          final created = await DownloadPathService.createDirectory(selectedPath);
+          if (!created) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('无法创建指定目录，请选择其他路径'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+            return;
+          }
+        }
+
+        await DownloadPathService.setDownloadPath(selectedPath);
+        _loadCurrentDownloadPath();
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('下载路径已设置为：$selectedPath')),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('选择路径失败：$e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _showLogoutDialog(BuildContext context, UserProvider userProvider) {

@@ -1,4 +1,22 @@
-// 传输任务模型
+// 直接使用core模型
+import '../models/connection_result.dart';
+import '../models/connection_stage.dart';
+
+// 由于core服务被暂时禁用，我们重新定义这些类型
+enum TransferType {
+  upload,
+  download;
+}
+
+enum TransferStatus {
+  pending,
+  uploading,
+  downloading,
+  completed,
+  failed,
+  cancelled;
+}
+
 class TransferTask {
   final String id;
   final String fileName;
@@ -28,27 +46,6 @@ class TransferTask {
     this.extra,
   });
 
-  // 格式化文件大小
-  String get formattedSize {
-    if (totalSize < 1024) return '${totalSize}B';
-    if (totalSize < 1024 * 1024) return '${(totalSize / 1024).toStringAsFixed(1)}KB';
-    if (totalSize < 1024 * 1024 * 1024) return '${(totalSize / (1024 * 1024)).toStringAsFixed(1)}MB';
-    return '${(totalSize / (1024 * 1024 * 1024)).toStringAsFixed(1)}GB';
-  }
-
-  // 格式化进度百分比
-  String get progressPercentage => '${(progress * 100).toInt()}%';
-
-  // 获取任务持续时间
-  String get duration {
-    if (completedAt == null) return '进行中';
-    final duration = completedAt!.difference(createdAt);
-    if (duration.inSeconds < 60) return '${duration.inSeconds}秒';
-    if (duration.inMinutes < 60) return '${duration.inMinutes}分${duration.inSeconds % 60}秒';
-    return '${duration.inHours}小时${duration.inMinutes % 60}分';
-  }
-
-  // 复制并更新任务
   TransferTask copyWith({
     String? id,
     String? fileName,
@@ -78,20 +75,24 @@ class TransferTask {
       extra: extra ?? this.extra,
     );
   }
-}
 
-// 传输类型
-enum TransferType {
-  upload,
-  download,
-}
+  // 格式化文件大小
+  String get formattedSize {
+    if (totalSize < 1024) return '${totalSize}B';
+    if (totalSize < 1024 * 1024) return '${(totalSize / 1024).toStringAsFixed(1)}KB';
+    if (totalSize < 1024 * 1024 * 1024) return '${(totalSize / (1024 * 1024)).toStringAsFixed(1)}MB';
+    return '${(totalSize / (1024 * 1024 * 1024)).toStringAsFixed(1)}GB';
+  }
 
-// 传输状态
-enum TransferStatus {
-  pending,    // 等待中
-  uploading,  // 上传中
-  downloading, // 下载中
-  completed,  // 已完成
-  failed,     // 失败
-  cancelled,  // 已取消
+  // 获取任务持续时间
+  String get duration {
+    if (completedAt == null) return '进行中';
+    final duration = completedAt!.difference(createdAt);
+    if (duration.inSeconds < 60) return '${duration.inSeconds}秒';
+    if (duration.inMinutes < 60) return '${duration.inMinutes}分${duration.inSeconds % 60}秒';
+    return '${duration.inHours}小时${duration.inMinutes % 60}分';
+  }
+
+  // 格式化进度百分比
+  String get progressPercentage => '${(progress * 100).toInt()}%';
 }

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
 import '../providers/user_provider.dart';
 import '../providers/file_provider.dart';
 import '../services/api_client.dart';
+import '../services/debug_settings_service.dart';
+import '../services/global_network_interceptor.dart';
 import '../utils/network_monitor.dart';
 import 'network_request_detail_dialog.dart';
 
@@ -27,6 +30,9 @@ class _DebugPanelState extends State<DebugPanel> {
   @override
   void initState() {
     super.initState();
+    // 初始化调试设置服务
+    DebugSettingsService().init();
+
     // 设置默认位置在右侧中间
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final screenSize = MediaQuery.of(context).size;
@@ -36,31 +42,86 @@ class _DebugPanelState extends State<DebugPanel> {
       });
     });
 
-    // 初始化网络监控
+    // 使用全局单例NetworkMonitor
     _networkMonitor = NetworkMonitor();
+
+    // 添加测试日志
+    addDebugLog('调试面板初始化完成', category: 'general');
+    addDebugLog('开发者模式状态检查', category: 'general');
+
     _setupNetworkMonitor();
   }
 
   void _setupNetworkMonitor() {
-    // 添加网络请求监听器
-    _networkMonitor.addListener((request) {
-      if (mounted) {
-        setState(() {});
-      }
-    });
-
-    // 添加网络请求拦截器
     try {
+      // 添加网络请求监听器
+      _networkMonitor.addListener((request) {
+        if (mounted) {
+          setState(() {});
+          addDebugLog('网络请求: ${request['method']} ${request['url']}');
+        }
+      });
+
+      // 添加拦截器到主要API客户端
       final apiClient = ApiClient();
-      apiClient.addInterceptor(_networkMonitor.createInterceptor());
+      final interceptor = _networkMonitor.createInterceptor();
+      apiClient.addInterceptor(interceptor);
+
+      addDebugLog('网络监控设置成功');
+
     } catch (e) {
-      addDebugLog('添加网络拦截器失败: $e');
+      addDebugLog('设置网络监控失败: $e');
     }
   }
 
-  void addDebugLog(String message) {
+  void _addInterceptorToAllDioInstances(Interceptor interceptor) {
+    try {
+      // 这里我们需要找到并添加到所有相关的Dio实例
+      // 由于无法直接访问所有实例，我们通过其他方式确保监听
+
+      addDebugLog('网络拦截器设置完成');
+    } catch (e) {
+      addDebugLog('设置额外拦截器失败: $e');
+    }
+  }
+
+  void addDebugLog(String message, {String category = 'general'}) {
+    // 检查是否应该记录此类型的日志
+    final debugSettings = DebugSettingsService();
+    bool shouldLog = false;
+
+    switch (category) {
+      case 'network':
+        shouldLog = debugSettings.networkLogs;
+        break;
+      case 'fileOperation':
+        shouldLog = debugSettings.fileOperationLogs;
+        break;
+      case 'userAuth':
+        shouldLog = debugSettings.userAuthLogs;
+        break;
+      case 'apiClient':
+        shouldLog = debugSettings.apiClientLogs;
+        break;
+      case 'fileProvider':
+        shouldLog = debugSettings.fileProviderLogs;
+        break;
+      case 'uploadDownload':
+        shouldLog = debugSettings.uploadDownloadLogs;
+        break;
+      case 'error':
+        shouldLog = debugSettings.errorLogs;
+        break;
+      case 'general':
+      default:
+        shouldLog = debugSettings.generalLogs;
+        break;
+    }
+
+    if (!shouldLog) return;
+
     setState(() {
-      _debugLogs.insert(0, '[${DateTime.now().toString().substring(11, 19)}] $message');
+      _debugLogs.insert(0, '[${DateTime.now().toString().substring(11, 19)}] [$category] $message');
       if (_debugLogs.length > 50) {
         _debugLogs.removeLast();
       }

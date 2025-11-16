@@ -20,31 +20,68 @@ class ApiService {
     debugPrint('=== 初始化API服务 ===');
     debugPrint('从ConfigService获取的服务器配置: ${_config?.baseUrl}');
 
+    // 验证URL格式
+    String baseUrl = _config?.baseUrl ?? '';
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      baseUrl = 'http://$baseUrl';
+    }
+
+    // 移除末尾的斜杠
+    if (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+    }
+
     _dio = Dio(BaseOptions(
-      baseUrl: _config?.baseUrl ?? '',
+      baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       sendTimeout: const Duration(seconds: 30),
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'User-Agent': 'ChaoxingRC/1.0',
       },
       responseType: ResponseType.json, // 确保响应被解析为JSON
+      followRedirects: true,
+      maxRedirects: 5,
+      validateStatus: (status) => status != null && status < 500, // 只有5xx错误才被视为失败
     ));
 
     debugPrint('Dio初始化完成，基础URL: ${_dio.options.baseUrl}');
 
-    // 使用 retry 包实现重试逻辑
+    // 添加请求和响应拦截器
     _dio.interceptors.add(
       InterceptorsWrapper(
+        onRequest: (options, handler) {
+          debugPrint('=== 发送请求 ===');
+          debugPrint('URL: ${options.uri}');
+          debugPrint('方法: ${options.method}');
+          debugPrint('数据: ${options.data}');
+          handler.next(options);
+        },
+        onResponse: (response, handler) {
+          debugPrint('=== 接收响应 ===');
+          debugPrint('状态码: ${response.statusCode}');
+          debugPrint('数据: ${response.data}');
+          handler.next(response);
+        },
         onError: (error, handler) async {
+          debugPrint('=== 请求错误 ===');
+          debugPrint('错误类型: ${error.type}');
+          debugPrint('错误信息: ${error.message}');
+          debugPrint('URL: ${error.requestOptions.uri}');
+
           final extra = error.requestOptions.extra;
           final retryCount = extra['retryCount'] ?? 0;
 
-          if (retryCount < 3 && _shouldRetry(error)) {
+          // 增加重试次数和条件判断
+          if (retryCount < 5 && _shouldRetry(error)) {
             extra['retryCount'] = retryCount + 1;
+            debugPrint('准备第 ${retryCount + 1} 次重试...');
 
-            // 计算延迟时间
-            final delay = Duration(seconds: [1, 2, 3][retryCount]);
+            // 指数退避算法计算延迟时间
+            final delay = Duration(seconds: (1 << retryCount).clamp(1, 16));
+            debugPrint('等待 ${delay.inSeconds} 秒后重试...');
 
             // 等待延迟后重试
             await Future.delayed(delay);
@@ -52,11 +89,14 @@ class ApiService {
             try {
               // 重试请求
               final response = await _dio.fetch(error.requestOptions);
+              debugPrint('重试成功！');
               handler.resolve(response);
             } catch (e) {
+              debugPrint('重试失败: $e');
               handler.next(error);
             }
           } else {
+            debugPrint('达到最大重试次数或错误不满足重试条件');
             handler.next(error);
           }
         },
@@ -349,21 +389,47 @@ class ApiService {
 
   // 判断是否应该重试
   bool _shouldRetry(DioException error) {
+    debugPrint('=== 判断是否重试 ===');
+
     // 只对特定类型的错误进行重试
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
+        debugPrint('连接超时，可以重试');
+        return true;
       case DioExceptionType.sendTimeout:
+        debugPrint('发送超时，可以重试');
+        return true;
       case DioExceptionType.receiveTimeout:
+        debugPrint('接收超时，可以重试');
+        return true;
       case DioExceptionType.connectionError:
+        debugPrint('连接错误，可以重试');
         return true;
       case DioExceptionType.badResponse:
         // 只对5xx服务器错误重试
         final statusCode = error.response?.statusCode;
-        if (statusCode != null && statusCode >= 500 && statusCode < 600) {
+        if (statusCode != null) {
+          debugPrint('HTTP状态码: $statusCode');
+          if (statusCode >= 500 && statusCode < 600) {
+            debugPrint('服务器错误(5xx)，可以重试');
+            return true;
+          } else if (statusCode == 429) {
+            debugPrint('请求过于频繁，可以重试');
+            return true;
+          }
+        }
+        debugPrint('客户端错误(4xx)，不重试');
+        return false;
+      case DioExceptionType.unknown:
+        // 检查是否是网络连接问题
+        if (error.error != null && error.error.toString().contains('Network is unreachable')) {
+          debugPrint('网络不可达，可以重试');
           return true;
         }
+        debugPrint('未知错误，不重试');
         return false;
       default:
+        debugPrint('其他错误类型，不重试');
         return false;
     }
   }
@@ -389,31 +455,63 @@ class ApiService {
       switch (error.type) {
         case DioExceptionType.connectionTimeout:
           debugPrint('连接超时错误');
-          return '连接超时，请检查网络连接';
+          return '连接服务器超时，请检查网络连接或稍后再试';
         case DioExceptionType.sendTimeout:
           debugPrint('发送超时错误');
-          return '请求超时，请重试';
+          return '请求数据超时，请检查网络状态后重试';
         case DioExceptionType.receiveTimeout:
           debugPrint('接收超时错误');
-          return '响应超时，请重试';
+          return '接收响应超时，请稍后再试';
         case DioExceptionType.badResponse:
           debugPrint('服务器响应错误');
-          if (error.response?.data is Map) {
-            return error.response?.data['error']?['message'] ?? '服务器错误';
+          final statusCode = error.response?.statusCode;
+          if (statusCode != null) {
+            if (statusCode >= 500) {
+              return '服务器内部错误，请稍后再试';
+            } else if (statusCode == 404) {
+              return '请求的资源不存在';
+            } else if (statusCode == 401) {
+              return '未授权访问，请检查登录状态';
+            } else if (statusCode == 403) {
+              return '没有权限访问此资源';
+            } else if (statusCode == 429) {
+              return '请求过于频繁，请稍后再试';
+            }
           }
-          return '服务器错误：' + (error.response?.statusCode?.toString() ?? '未知状态码');
+
+          if (error.response?.data is Map) {
+            final errorMsg = error.response?.data['error']?['message'];
+            if (errorMsg != null && errorMsg.toString().isNotEmpty) {
+              return errorMsg;
+            }
+          }
+          return '服务器错误：' + (statusCode?.toString() ?? '未知状态码');
         case DioExceptionType.cancel:
           debugPrint('请求被取消');
           return '请求已取消';
         case DioExceptionType.connectionError:
           debugPrint('网络连接错误');
-          return '网络连接错误，请检查网络设置';
-        default:
+          return '无法连接到服务器，请检查网络设置和服务器地址';
+        case DioExceptionType.unknown:
           debugPrint('未知Dio错误');
-          return '未知错误：' + (error.message ?? '无错误信息');
+          if (error.error != null && error.error.toString().contains('Network is unreachable')) {
+            return '网络不可达，请检查网络连接';
+          }
+          return '网络请求失败：' + (error.message ?? '未知错误');
+        default:
+          debugPrint('其他Dio错误');
+          return '网络请求失败：' + (error.message ?? '未知错误');
       }
     }
-    return '发生未知错误';
+
+    // 非Dio错误处理
+    if (error is SocketException) {
+      return '网络连接失败，请检查网络设置';
+    } else if (error is FormatException) {
+      return '数据格式错误，服务器返回了无效数据';
+    }
+
+    return '请求失败：${error.toString()}';
   }
 
   // 删除文件或文件夹

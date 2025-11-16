@@ -65,7 +65,7 @@ class BottomNavBar extends StatelessWidget {
           ),
         ],
       ),
-      );
+    );
   }
 
   BottomNavigationBarItem _buildBottomNavigationBarItem({

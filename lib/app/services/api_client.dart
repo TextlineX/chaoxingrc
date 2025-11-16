@@ -3,13 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:io' show Platform;
-import 'package:path_provider/path_provider.dart';
-import 'download_path_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http_parser/http_parser.dart';
-import 'package:path_provider/path_provider.dart';
+import '../models/connection_result.dart';
+import '../models/connection_stage.dart';
+import 'download_path_service.dart';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -19,17 +18,38 @@ class ApiClient {
   late Dio _dio;
   String? _serverUrl;
 
+  // 提供对dio的公开访问
+  Dio get dio => _dio;
+
   // 初始化API客户端
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _serverUrl = prefs.getString('server_url');
 
+    // 获取服务器模式的认证信息（与本地模式独立）
+    final cookie = prefs.getString('server_auth_cookie') ?? '';
+    final bsid = prefs.getString('server_auth_bsid') ?? '';
+
+    // 创建请求头
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+    };
+
+    // 如果有服务器模式的认证信息，添加到请求头
+    if (cookie.isNotEmpty) {
+      headers['Cookie'] = cookie;
+    }
+
+    if (bsid.isNotEmpty) {
+      headers['BSID'] = bsid;
+    }
+
     _dio = Dio(BaseOptions(
       baseUrl: _serverUrl ?? '',
       connectTimeout: const Duration(seconds: 60),
       receiveTimeout: const Duration(seconds: 60),
-      sendTimeout: const Duration(minutes: 10), // 增加发送超时时间，特别是大文件上传
-      headers: {'Content-Type': 'application/json'},
+      sendTimeout: const Duration(minutes: 10),
+      headers: headers,
       responseType: ResponseType.json,
     ));
 
@@ -43,6 +63,28 @@ class ApiClient {
     _dio.options.baseUrl = url;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('server_url', url);
+
+    // 获取服务器模式的认证信息（与本地模式独立）
+    final cookie = prefs.getString('server_auth_cookie') ?? '';
+    final bsid = prefs.getString('server_auth_bsid') ?? '';
+
+    // 更新请求头
+    final headers = Map<String, String>.from(_dio.options.headers);
+
+    // 如果有服务器模式的认证信息，添加到请求头
+    if (cookie.isNotEmpty) {
+      headers['Cookie'] = cookie;
+    } else {
+      headers.remove('Cookie');
+    }
+
+    if (bsid.isNotEmpty) {
+      headers['BSID'] = bsid;
+    } else {
+      headers.remove('BSID');
+    }
+
+    _dio.options.headers = headers;
   }
 
   // 添加拦截器
@@ -50,19 +92,153 @@ class ApiClient {
     _dio.interceptors.add(interceptor);
   }
 
+  // 设置认证信息（用于独立模式）
+  Future<void> setAuthCredentials(String cookie, String bsid) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('server_auth_cookie', cookie);
+    await prefs.setString('server_auth_bsid', bsid);
+
+    // 更新请求头
+    final headers = Map<String, String>.from(_dio.options.headers);
+
+    if (cookie.isNotEmpty) {
+      headers['Cookie'] = cookie;
+    } else {
+      headers.remove('Cookie');
+    }
+
+    if (bsid.isNotEmpty) {
+      headers['BSID'] = bsid;
+    } else {
+      headers.remove('BSID');
+    }
+
+    _dio.options.headers = headers;
+  }
+
+  // 清除认证信息
+  Future<void> clearAuthCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('server_auth_cookie');
+    await prefs.remove('server_auth_bsid');
+
+    // 移除请求头
+    final headers = Map<String, String>.from(_dio.options.headers);
+    headers.remove('Cookie');
+    headers.remove('BSID');
+    _dio.options.headers = headers;
+  }
+
+  // 获取当前认证信息
+  Future<Map<String, String>> getCurrentAuthCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    return {
+      'cookie': prefs.getString('server_auth_cookie') ?? '',
+      'bsid': prefs.getString('server_auth_bsid') ?? '',
+    };
+  }
+
+  // 获取文件MIME类型
+  String _getContentType(String fileExtension) {
+    switch (fileExtension) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'gif':
+        return 'image/gif';
+      case 'pdf':
+        return 'application/pdf';
+      case 'doc':
+        return 'application/msword';
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'xls':
+        return 'application/vnd.ms-excel';
+      case 'xlsx':
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'ppt':
+        return 'application/vnd.ms-powerpoint';
+      case 'pptx':
+        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      case 'txt':
+        return 'text/plain';
+      case 'zip':
+        return 'application/zip';
+      case 'rar':
+        return 'application/x-rar-compressed';
+      case 'mp4':
+        return 'video/mp4';
+      case 'mp3':
+        return 'audio/mpeg';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
+  // 简单的网络诊断工具
+  Future<void> diagnoseNetwork() async {
+    try {
+      final connectivityResult = await Connectivity().checkConnectivity();
+      debugPrint('网络连接类型: $connectivityResult');
+
+      if (_serverUrl != null) {
+        final uri = Uri.parse(_serverUrl!);
+        debugPrint('服务器地址: ${uri.host}:${uri.port}');
+      }
+    } catch (e) {
+      debugPrint('网络诊断失败: $e');
+    }
+  }
+
   // 检查网络连接
-  Future<bool> checkConnection() async {
+  Future<ConnectionResult> checkConnection() async {
     try {
       final connectivityResult = await Connectivity().checkConnectivity();
       if (connectivityResult == ConnectivityResult.none) {
-        throw Exception('无网络连接');
+        return ConnectionResult(
+          success: false,
+          stage: ConnectionStage.networkCheck,
+          message: '设备无网络连接',
+          suggestion: '请检查您的网络设置，确保设备已连接到网络',
+        );
       }
 
-      await _dio.get('/api/files', queryParameters: {'folderId': '-1'});
-      return true;
+      // 测试服务器连接
+      try {
+        final uri = Uri.parse(_serverUrl!);
+        final host = uri.host;
+        final port = uri.port;
+
+        // 尝试连接服务器
+        final socket = await Socket.connect(host, port, timeout: const Duration(seconds: 5));
+        socket.destroy();
+
+        // 测试API端点
+        await _dio.get('/api/files', queryParameters: {'folderId': '-1'});
+
+        return ConnectionResult(
+          success: true,
+          stage: ConnectionStage.apiEndpoint,
+          message: '连接成功',
+          suggestion: '服务器可以正常访问',
+        );
+      } catch (e) {
+        return ConnectionResult(
+          success: true,
+          stage: ConnectionStage.tcpConnection,
+          message: '已连接到服务器',
+          suggestion: '服务器可以访问，但API服务可能未正常运行',
+        );
+      }
     } catch (e) {
-      debugPrint('连接检查失败: $e');
-      return false;
+      return ConnectionResult(
+        success: false,
+        stage: ConnectionStage.unknown,
+        message: '连接测试失败',
+        suggestion: '请检查网络设置和服务器状态',
+      );
     }
   }
 
