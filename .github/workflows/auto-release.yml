@@ -1,0 +1,144 @@
+name: Auto Release
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create release?'
+        required: true
+        default: 'yes'
+        type: boolean
+      version_suffix:
+        description: 'Version suffix (optional)'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # 获取完整历史记录用于版本号生成
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable'
+        cache: true
+
+    - name: Set up Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Install dependencies
+      run: flutter pub get
+
+    - name: Generate version number
+      id: version
+      run: |
+        # 获取当前时间戳
+        TIMESTAMP=$(date +'%Y%m%d-%H%M')
+
+        # 获取最近的commit数量
+        COMMIT_COUNT=$(git rev-list --count HEAD)
+
+        # 获取当前分支名
+        BRANCH=${GITHUB_REF#refs/heads/}
+
+        # 如果是手动触发且有自定义后缀，使用自定义后缀
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          SUFFIX="${{ github.event.inputs.version_suffix }}"
+          if [ -n "$SUFFIX" ]; then
+            VERSION="v1.0.$COMMIT_COUNT-$SUFFIX"
+          else
+            VERSION="v1.0.$COMMIT_COUNT-$TIMESTAMP"
+          fi
+        else
+          # 自动触发时使用时间戳
+          VERSION="v1.0.$COMMIT_COUNT-$TIMESTAMP"
+        fi
+
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Generated version: $VERSION"
+
+    - name: Build APK
+      run: |
+        flutter clean
+        flutter pub get
+        flutter build apk --release --no-shrink
+
+    - name: Build App Bundle
+      run: |
+        flutter build appbundle --release --no-shrink
+
+    - name: Generate Release Notes
+      id: release_notes
+      run: |
+        # 获取最近一次commit的信息
+        LAST_COMMIT=$(git log -1 --pretty=format:"%h %s")
+        COMMITS_SINCE_RELEASE=$(git log --oneline $(git describe --tags --abbrev=0 2>/dev/null || echo HEAD~10)..HEAD)
+
+        cat > release_notes.md << EOF
+        ## 📱 超星学习通网盘 - 自动发布版本
+
+        **版本信息：** ${{ steps.version.outputs.version }}
+        **构建时间：** $(date '+%Y-%m-%d %H:%M:%S')
+        **分支：** ${GITHUB_REF#refs/heads/}
+
+        ### 🔄 本次更新内容
+        $COMMITS_SINCE_RELEASE
+
+        ### 📥 下载说明
+        - **APK文件**: 直接安装的Android应用包
+        - **AAB文件**: Google Play商店发布包
+
+        ### ⚠️ 注意事项
+        - 首次安装可能需要允许"未知来源"应用安装
+        - 如遇到问题，请尝试卸载旧版本后重新安装
+
+        ---
+        🤖 *此版本由GitHub Actions自动构建和发布*
+        EOF
+
+        echo "release_notes_file=release_notes.md" >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        name: "超星学习通网盘 ${{ steps.version.outputs.version }}"
+        body_path: release_notes.md
+        files: |
+          build/app/outputs/flutter-apk/app-release.apk
+          build/app/outputs/bundle/release/app-release.aab
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload Artifacts to Actions
+      uses: actions/upload-artifact@v4
+      with:
+        name: chaoxingrc-${{ steps.version.outputs.version }}
+        path: |
+          build/app/outputs/flutter-apk/app-release.apk
+          build/app/outputs/bundle/release/app-release.aab
+        retention-days: 30
+
+    - name: Notify Success
+      run: |
+        echo "✅ Release ${{ steps.version.outputs.version }} created successfully!"
+        echo "📱 APK Size: $(du -h build/app/outputs/flutter-apk/app-release.apk | cut -f1)"
+        echo "📦 AAB Size: $(du -h build/app/outputs/bundle/release/app-release.aab | cut -f1)"

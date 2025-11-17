@@ -24,28 +24,34 @@ class FileApiService {
 
   // 初始化方法
   Future<void> init({BuildContext? context}) async {
-    // 获取登录模式
+    // 修复：强制重新获取登录模式，避免缓存问题
+    final prefs = await SharedPreferences.getInstance();
+    _loginMode = prefs.getString('login_mode') ?? 'server';
+
     if (context != null) {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
-      _loginMode = userProvider.loginMode;
-      debugPrint('FileApiService: 从context获取登录模式: $_loginMode');
-    } else {
-      // 如果没有context，尝试从SharedPreferences获取
-      final prefs = await SharedPreferences.getInstance();
-      _loginMode = prefs.getString('login_mode') ?? 'server';
-      debugPrint('FileApiService: 从SharedPreferences获取登录模式: $_loginMode');
+      // 如果context中的模式不同，更新SharedPreferences中的模式
+      if (userProvider.loginMode != _loginMode) {
+        _loginMode = userProvider.loginMode;
+        await prefs.setString('login_mode', _loginMode);
+      }
     }
+
+    debugPrint('FileApiService: 获取登录模式: $_loginMode');
 
     // 根据登录模式初始化相应的客户端
     if (_loginMode == 'local') {
       _localClient = LocalApiService();
       await _localClient.init();
+      debugPrint('FileApiService: LocalApiService初始化完成');
     } else {
       _client = ApiClient();
       await _client.init();
+      debugPrint('FileApiService: ApiClient初始化完成');
     }
 
     await DirectUploadService().init();
+    debugPrint('FileApiService: 初始化完成，当前模式：$_loginMode');
   }
 
   // 辅助方法：根据登录模式选择客户端并执行POST请求

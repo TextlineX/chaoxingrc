@@ -33,7 +33,7 @@ class LocalApiService {
     // 获取用户配置的服务器地址（优先使用用户配置的后端地址）
     _serverUrl = prefs.getString('server_url') ?? 'http://192.168.31.254:8080';
 
-    // 获取独立模式的认证信息 - 修复键名匹配问题
+    // 修复：确保认证信息正确获取
     _cookie = prefs.getString('local_auth_cookie') ?? '';
     _bsid = prefs.getString('local_auth_bsid') ?? '';
 
@@ -46,7 +46,7 @@ class LocalApiService {
       },
     );
 
-    // 添加认证信息到API Dio
+    // 修复：确保认证信息正确添加到API Dio
     if (_cookie!.isNotEmpty) {
       _apiDio.options.headers['Cookie'] = _cookie!;
     }
@@ -81,13 +81,16 @@ class LocalApiService {
       responseType: ResponseType.json,
     ));
 
-    debugPrint('本地API服务初始化完成，服务器URL: $_serverUrl');
-    debugPrint('Cookie状态: ${_cookie!.isNotEmpty ? "已设置 (${_cookie!.substring(0, _cookie!.length > 20 ? 20 : _cookie!.length)}...)" : "未设置"}');
-    debugPrint('BSID状态: ${_bsid!.isNotEmpty ? "已设置 ($_bsid)" : "未设置"}');
+    debugPrint('LocalApiService初始化完成：');
+    debugPrint('- 服务器URL: $_serverUrl');
+    debugPrint('- Cookie状态: ${_cookie!.isNotEmpty ? "已设置" : "未设置"}');
+    debugPrint('- BSID状态: ${_bsid!.isNotEmpty ? "已设置" : "未设置"}');
 
     // 检查认证信息是否完整
     if (_cookie!.isEmpty || _bsid!.isEmpty) {
       debugPrint('⚠️ 警告: 本地模式认证信息不完整，可能无法访问超星API');
+    } else {
+      debugPrint('✓ 认证信息完整，可以访问超星API');
     }
   }
 
@@ -96,7 +99,7 @@ class LocalApiService {
     _serverUrl = url;
     _dio.options.baseUrl = url;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('local_server_url', url);
+    await prefs.setString('server_url', url); // 修复：统一使用server_url
 
     // 获取本地模式的认证信息
     final cookie = prefs.getString('local_auth_cookie') ?? '';
@@ -119,6 +122,7 @@ class LocalApiService {
     }
 
     _dio.options.headers = headers;
+    debugPrint('LocalApiService: 服务器URL已更新：$url，认证状态：${cookie.isNotEmpty ? "已认证" : "未认证"}');
   }
 
   // 获取文件列表 - 基于API文档实现

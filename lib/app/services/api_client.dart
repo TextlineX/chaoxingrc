@@ -26,16 +26,16 @@ class ApiClient {
     final prefs = await SharedPreferences.getInstance();
     _serverUrl = prefs.getString('server_url');
 
-    // 获取服务器模式的认证信息（与本地模式独立）
-    final cookie = prefs.getString('server_auth_cookie') ?? '';
-    final bsid = prefs.getString('server_auth_bsid') ?? '';
+    // 修复：优先获取独立模式的认证信息
+    final cookie = prefs.getString('local_auth_cookie') ?? '';
+    final bsid = prefs.getString('local_auth_bsid') ?? '';
 
     // 创建请求头
     final headers = <String, String>{
       'Content-Type': 'application/json',
     };
 
-    // 如果有服务器模式的认证信息，添加到请求头
+    // 如果有认证信息，添加到请求头
     if (cookie.isNotEmpty) {
       headers['Cookie'] = cookie;
     }
@@ -55,6 +55,7 @@ class ApiClient {
 
     // 添加重试拦截器
     _dio.interceptors.add(RetryInterceptor());
+    debugPrint('ApiClient初始化完成：服务器=$_serverUrl，认证状态=${cookie.isNotEmpty ? "已认证" : "未认证"}');
   }
 
   // 更新服务器URL
@@ -64,14 +65,14 @@ class ApiClient {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('server_url', url);
 
-    // 获取服务器模式的认证信息（与本地模式独立）
-    final cookie = prefs.getString('server_auth_cookie') ?? '';
-    final bsid = prefs.getString('server_auth_bsid') ?? '';
+    // 修复：优先获取独立模式的认证信息
+    final cookie = prefs.getString('local_auth_cookie') ?? '';
+    final bsid = prefs.getString('local_auth_bsid') ?? '';
 
     // 更新请求头
     final headers = Map<String, String>.from(_dio.options.headers);
 
-    // 如果有服务器模式的认证信息，添加到请求头
+    // 如果有认证信息，添加到请求头
     if (cookie.isNotEmpty) {
       headers['Cookie'] = cookie;
     } else {
@@ -85,6 +86,7 @@ class ApiClient {
     }
 
     _dio.options.headers = headers;
+    debugPrint('服务器URL已更新：$url，认证状态=${cookie.isNotEmpty ? "已认证" : "未认证"}');
   }
 
   // 添加拦截器
@@ -95,8 +97,9 @@ class ApiClient {
   // 设置认证信息（用于独立模式）
   Future<void> setAuthCredentials(String cookie, String bsid) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('server_auth_cookie', cookie);
-    await prefs.setString('server_auth_bsid', bsid);
+    // 修复：统一使用local_auth前缀，避免与服务器模式混淆
+    await prefs.setString('local_auth_cookie', cookie);
+    await prefs.setString('local_auth_bsid', bsid);
 
     // 更新请求头
     final headers = Map<String, String>.from(_dio.options.headers);
@@ -114,27 +117,33 @@ class ApiClient {
     }
 
     _dio.options.headers = headers;
+    debugPrint('认证信息已更新：Cookie=${cookie.isNotEmpty ? "已设置" : "未设置"}, BSID=${bsid.isNotEmpty ? "已设置" : "未设置"}');
   }
 
   // 清除认证信息
   Future<void> clearAuthCredentials() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('server_auth_cookie');
-    await prefs.remove('server_auth_bsid');
+    // 修复：清除独立模式的认证信息
+    await prefs.remove('local_auth_cookie');
+    await prefs.remove('local_auth_bsid');
 
     // 移除请求头
     final headers = Map<String, String>.from(_dio.options.headers);
     headers.remove('Cookie');
     headers.remove('BSID');
     _dio.options.headers = headers;
+    debugPrint('认证信息已清除');
   }
 
   // 获取当前认证信息
   Future<Map<String, String>> getCurrentAuthCredentials() async {
     final prefs = await SharedPreferences.getInstance();
+    // 修复：优先获取独立模式的认证信息
+    final cookie = prefs.getString('local_auth_cookie') ?? '';
+    final bsid = prefs.getString('local_auth_bsid') ?? '';
     return {
-      'cookie': prefs.getString('server_auth_cookie') ?? '',
-      'bsid': prefs.getString('server_auth_bsid') ?? '',
+      'cookie': cookie,
+      'bsid': bsid,
     };
   }
 

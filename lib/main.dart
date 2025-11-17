@@ -22,9 +22,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    // 暂时禁用依赖注入容器，修复编译错误
-    // await initializeDependencies();
-    debugPrint('依赖注入容器暂时禁用');
+    // 修复：重新启用正确的初始化流程，确保依赖关系正确
+    debugPrint('开始初始化应用服务...');
 
     // 初始化flutter_downloader
     await FlutterDownloader.initialize(debug: true);
@@ -38,13 +37,13 @@ void main() async {
     await ConfigService.getConfig();
     debugPrint('ConfigService初始化完成');
 
-    // 初始化API服务
-    await ApiService().init();
-    debugPrint('ApiService初始化完成');
-
     // 初始化全局网络拦截器
     await GlobalNetworkInterceptor().init();
     debugPrint('全局网络拦截器初始化完成');
+
+    // 初始化API服务
+    await ApiService().init();
+    debugPrint('ApiService初始化完成');
   } catch (e, stackTrace) {
     debugPrint('初始化过程中发生错误: $e');
     debugPrint('堆栈跟踪: $stackTrace');

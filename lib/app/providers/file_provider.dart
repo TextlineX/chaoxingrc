@@ -1,6 +1,7 @@
 // 兼容性Provider适配器 - 逐步迁移到core架构
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/file_api_service.dart';
 import '../services/local_file_service.dart';
 import '../models/file_item.dart';
@@ -53,15 +54,15 @@ class FileProvider extends ChangeNotifier {
     }
 
     try {
-      // 初始化API服务
-      if (context != null) {
-        await _apiService.init(context: context);
-      }
+      // 修复：强制重新初始化API服务，确保获取最新的登录模式
+      await _apiService.init(context: context);
 
       _isInitialized = true;
+      debugPrint('FileProvider初始化完成，登录模式：${_userProvider?.loginMode ?? 'server'}');
       if (notify) notifyListeners();
     } catch (e) {
       _error = e.toString();
+      debugPrint('FileProvider初始化失败: $e');
       if (notify) notifyListeners();
       rethrow;
     }
@@ -78,14 +79,16 @@ class FileProvider extends ChangeNotifier {
 
     try {
       List<FileItemModel> loadedFiles = [];
-      final loginMode = _userProvider?.loginMode ?? 'server';
+      // 修复：重新获取最新的登录模式，而不是依赖缓存的值
+      final prefs = await SharedPreferences.getInstance();
+      final loginMode = _userProvider?.loginMode ?? prefs.getString('login_mode') ?? 'server';
+      debugPrint('当前登录模式: $loginMode');
 
       if (loginMode == 'local') {
         debugPrint('加载本地文件列表: folderId=$targetFolderId');
         try {
           // 确保LocalFileService已初始化
           final localFileService = LocalFileService();
-          // 使用公共方法检查初始化状态，或者直接初始化
           await localFileService.init();
 
           final localFiles = await localFileService.getFiles(folderId: targetFolderId);
@@ -105,6 +108,8 @@ class FileProvider extends ChangeNotifier {
           // 提供用户友好的错误信息
           if (e.toString().contains('认证信息缺失')) {
             _error = '请先在认证配置页面设置有效的Cookie和BSID';
+          } else if (e.toString().contains('网络连接')) {
+            _error = '网络连接失败，请检查网络设置';
           } else {
             _error = '本地模式加载失败: $e';
           }
@@ -139,6 +144,7 @@ class FileProvider extends ChangeNotifier {
       if (notify) notifyListeners();
     } catch (e) {
       _error = e.toString();
+      debugPrint('loadFiles异常: $e');
       if (notify) notifyListeners();
     } finally {
       _setLoading(false, notify: notify);
@@ -419,6 +425,13 @@ class FileProvider extends ChangeNotifier {
   // 更新登录模式 - 用于初始化后重新设置正确的登录模式
   Future<void> updateLoginMode(String loginMode) async {
     debugPrint('FileProvider: 更新登录模式为 $loginMode');
-    await _apiService.init(context: null); // 重新初始化API服务，从SharedPreferences读取最新的登录模式
+    // 修复：强制重新初始化API服务，确保切换登录模式后立即生效
+    try {
+      await _apiService.init(context: null);
+      debugPrint('FileProvider: API服务重新初始化完成，新模式：$loginMode');
+    } catch (e) {
+      debugPrint('FileProvider: API服务重新初始化失败: $e');
+      rethrow;
+    }
   }
 }
