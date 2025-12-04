@@ -28,15 +28,18 @@ class ThemeProvider extends ChangeNotifier {
     if (notify) notifyListeners();
   }
 
-  ThemeMode _parseMode(String? v) =>
-      v == 'dark' ? ThemeMode.dark : v == 'light' ? ThemeMode.light : ThemeMode.system;
+  ThemeMode _parseMode(String? v) => v == 'dark'
+      ? ThemeMode.dark
+      : v == 'light'
+          ? ThemeMode.light
+          : ThemeMode.system;
 
   Future<void> setThemeMode(ThemeMode m) async {
     _themeMode = m;
     final modeString = {
       ThemeMode.light: 'light',
-      ThemeMode.dark:  'dark',
-      ThemeMode.system:'system',
+      ThemeMode.dark: 'dark',
+      ThemeMode.system: 'system',
     }[m]!;
     await _prefs.setString(_themeKey, modeString);
     notifyListeners();
@@ -44,7 +47,7 @@ class ThemeProvider extends ChangeNotifier {
 
   Future<void> setSeedColor(Color c) async {
     _seedColor = c;
-    await _prefs.setInt(_colorKey, c.value);
+    await _prefs.setInt(_colorKey, c.toARGB32());
     notifyListeners();
   }
 
@@ -62,14 +65,16 @@ class ThemeProvider extends ChangeNotifier {
 
   Future<ColorScheme> getColorScheme(Brightness brightness) async {
     if (!_useDynamicColor) {
-      return ColorScheme.fromSeed(seedColor: _seedColor, brightness: brightness);
+      return ColorScheme.fromSeed(
+          seedColor: _seedColor, brightness: brightness);
     }
     try {
       final palette = await DynamicColorPlugin.getCorePalette();
       return palette?.toColorScheme() ??
           ColorScheme.fromSeed(seedColor: _seedColor, brightness: brightness);
     } catch (_) {
-      return ColorScheme.fromSeed(seedColor: _seedColor, brightness: brightness);
+      return ColorScheme.fromSeed(
+          seedColor: _seedColor, brightness: brightness);
     }
   }
 }

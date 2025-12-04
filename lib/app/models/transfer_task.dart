@@ -89,21 +89,30 @@ class TransferTask {
 
   // 格式化文件大小
   String get formattedSize {
-    if (totalSize < 1024) return '${totalSize}B';
-    if (totalSize < 1024 * 1024)
+    if (totalSize < 1024) {
+      return '${totalSize}B';
+    }
+    if (totalSize < 1024 * 1024) {
       return '${(totalSize / 1024).toStringAsFixed(1)}KB';
-    if (totalSize < 1024 * 1024 * 1024)
+    }
+    if (totalSize < 1024 * 1024 * 1024) {
       return '${(totalSize / (1024 * 1024)).toStringAsFixed(1)}MB';
+    }
     return '${(totalSize / (1024 * 1024 * 1024)).toStringAsFixed(1)}GB';
   }
 
   // 获取任务持续时间
   String get duration {
-    if (completedAt == null) return '进行中';
+    if (completedAt == null) {
+      return '进行中';
+    }
     final duration = completedAt!.difference(createdAt);
-    if (duration.inSeconds < 60) return '${duration.inSeconds}秒';
-    if (duration.inMinutes < 60)
+    if (duration.inSeconds < 60) {
+      return '${duration.inSeconds}秒';
+    }
+    if (duration.inMinutes < 60) {
       return '${duration.inMinutes}分${duration.inSeconds % 60}秒';
+    }
     return '${duration.inHours}小时${duration.inMinutes % 60}分';
   }
 

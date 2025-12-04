@@ -41,6 +41,7 @@ class _FilesTabState extends State<FilesTab> {
       // 确保在初始化之前等待一帧，避免在build期间调用
       await Future.delayed(Duration.zero);
 
+      if (!mounted) return;
       // 初始化 FileProvider
       await _fileProvider.init(context);
 
@@ -109,7 +110,7 @@ class _FilesTabState extends State<FilesTab> {
               final name = controller.text.trim();
               if (name.isEmpty) return;
 
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               final success = await _fileProvider.createFolder(name);
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
