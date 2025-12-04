@@ -36,9 +36,9 @@ android {
     flavorDimensions += "env"
 
     productFlavors {
-        create("test") {
+        create("beta") {
             dimension = "env"
-            applicationIdSuffix = ".test"
+            applicationIdSuffix = ".beta"
             resValue("string", "app_name", "超星网盘(测试)")
         }
         create("prod") {
