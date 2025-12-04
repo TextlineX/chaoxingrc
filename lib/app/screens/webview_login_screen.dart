@@ -312,9 +312,12 @@ class _WebViewLoginScreenState extends State<WebViewLoginScreen> {
       final content = response.data.toString();
       // 登录失效通常会重定向到登录页，或者返回HTML页面而不是JSON
       // 如果返回的是登录页面，说明登录失效
+      // 增加对 "验证码登录" 等关键字的检测，因为登录页可能包含这些词
       if (content.contains('<title>用户登录</title>') ||
           content.contains('passport2.chaoxing.com/login') ||
-          content.contains('class="lg-container"')) {
+          content.contains('class="lg-container"') ||
+          content.contains('验证码登录') ||
+          content.contains('新用户注册')) {
         debugPrint('Login validation failed: Returned login page');
         if (mounted) {
           setState(() {
@@ -333,6 +336,10 @@ class _WebViewLoginScreenState extends State<WebViewLoginScreen> {
         // 如果是有效的 JSON 且包含 result: 1 或 success: true，则认为成功
         // 但超星网盘 API 有时即使成功也返回 HTML 片段，所以主要依赖上面的 HTML 检测
         debugPrint('Validation response length: ${content.length}');
+
+        // 如果响应体非常短（例如小于500字符），并且不包含上述登录关键字，
+        // 且状态码是200，即使它不是JSON，我们也暂时认为它是有效的响应
+        // 因为 API 可能返回空列表的 HTML 片段
 
         // 如果能成功获取数据，说明登录有效
         return true;
