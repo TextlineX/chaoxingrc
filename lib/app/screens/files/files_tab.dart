@@ -41,7 +41,7 @@ class _FilesTabState extends State<FilesTab> {
       // 确保在初始化之前等待一帧，避免在build期间调用
       await Future.delayed(Duration.zero);
 
-      if (!mounted) return;
+      if (!context.mounted) return;
       // 初始化 FileProvider
       await _fileProvider.init(context);
 
@@ -110,17 +110,16 @@ class _FilesTabState extends State<FilesTab> {
               final name = controller.text.trim();
               if (name.isEmpty) return;
 
-              Navigator.pop(dialogContext);
+              Navigator.pop(context);
               final success = await _fileProvider.createFolder(name);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(success
-                        ? '创建成功'
-                        : '创建失败: ${_fileProvider.error ?? "未知错误"}'),
-                  ),
-                );
-              }
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(success
+                      ? '创建成功'
+                      : '创建失败: ${_fileProvider.error ?? "未知错误"}'),
+                ),
+              );
             },
             child: const Text('创建'),
           ),
