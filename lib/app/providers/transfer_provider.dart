@@ -222,8 +222,25 @@ class TransferProvider extends ChangeNotifier {
       _updateTaskStatus(task.id, TransferStatus.completed, progress: 1.0);
       _cancelTokens.remove(task.id);
     } catch (e) {
-      debugPrint('Download failed: $e');
-      _updateTaskStatus(task.id, TransferStatus.failed, error: e.toString());
+      // Check if error is due to cancellation
+      if (e is DioException && CancelToken.isCancel(e)) {
+        debugPrint('Download canceled for task ${task.id}');
+        // Do not set to failed if canceled
+        // The status should have been set by pauseTask or cancelTask
+        // But if it was just canceled, we ensure it's pending (paused) or cancelled
+        final index = _tasks.indexWhere((t) => t.id == task.id);
+        if (index != -1) {
+          final currentStatus = _tasks[index].status;
+          // If current status is downloading, it means it was canceled but status not updated yet (unlikely with current logic)
+          // Or if we want to support "pause" via cancel
+          if (currentStatus == TransferStatus.downloading) {
+             _updateTaskStatus(task.id, TransferStatus.pending);
+          }
+        }
+      } else {
+        debugPrint('Download failed: $e');
+        _updateTaskStatus(task.id, TransferStatus.failed, error: e.toString());
+      }
       _cancelTokens.remove(task.id);
     }
   }
@@ -231,25 +248,28 @@ class TransferProvider extends ChangeNotifier {
   // Cancel task
   Future<void> cancelTask(String taskId) async {
     if (_cancelTokens.containsKey(taskId)) {
+      // Update status first to avoid race condition in catch block
+      _updateTaskStatus(taskId, TransferStatus.cancelled);
       _cancelTokens[taskId]!.cancel();
       _cancelTokens.remove(taskId);
-      _updateTaskStatus(taskId, TransferStatus.cancelled);
     }
   }
 
   Future<void> pauseTask(String taskId) async {
     if (_cancelTokens.containsKey(taskId)) {
+      // Update status first to avoid race condition in catch block
+      _updateTaskStatus(taskId, TransferStatus.pending); // Using pending to indicate paused
       _cancelTokens[taskId]!.cancel();
       _cancelTokens.remove(taskId);
-      _updateTaskStatus(taskId,
-          TransferStatus.pending); // Using pending to indicate paused/waiting
     }
   }
 
   Future<void> deleteTask(String taskId) async {
     // 如果任务正在进行，先取消
     if (_cancelTokens.containsKey(taskId)) {
-      await cancelTask(taskId);
+      // Directly cancel token, status update not needed as we remove task immediately
+      _cancelTokens[taskId]!.cancel();
+      _cancelTokens.remove(taskId);
     }
 
     _tasks.removeWhere((t) => t.id == taskId);

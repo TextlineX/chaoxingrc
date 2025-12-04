@@ -6,6 +6,7 @@ import 'package:file_selector/file_selector.dart'; // Added import
 // --- 修正所有 import 路径 ---
 import '../../providers/file_provider.dart';
 import '../../providers/transfer_provider.dart';
+import '../../providers/user_provider.dart';
 import '../../widgets/files_app_bar.dart';
 import '../../widgets/path_navigator.dart';
 import '../../widgets/files_list.dart';
@@ -23,6 +24,8 @@ class FilesTab extends StatefulWidget {
 class _FilesTabState extends State<FilesTab> {
   late FileProvider _fileProvider;
   late final TransferProvider _transferProvider;
+  // Track current bbsid to detect changes
+  String? _lastBbsid;
 
   @override
   void initState() {
@@ -36,24 +39,36 @@ class _FilesTabState extends State<FilesTab> {
     _initializeFileProvider();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Check if bbsid changed (e.g., user switched circle in Profile tab)
+    final userProvider = Provider.of<UserProvider>(context, listen: true);
+    if (_lastBbsid != null && _lastBbsid != userProvider.bbsid) {
+      // Bbsid changed, refresh file list
+      debugPrint(
+          'BBSID changed from $_lastBbsid to ${userProvider.bbsid}, refreshing files...');
+      _lastBbsid = userProvider.bbsid;
+      // Wait for frame to avoid build conflicts
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _fileProvider.loadFiles();
+      });
+    } else {
+      _lastBbsid = userProvider.bbsid;
+    }
+  }
+
   Future<void> _initializeFileProvider() async {
     try {
       // 确保在初始化之前等待一帧，避免在build期间调用
       await Future.delayed(Duration.zero);
 
-      if (!mounted) return;
       // 初始化 FileProvider
-      // 使用 context.mounted 检查是否安全使用 context
-      if (context.mounted) {
-        await _fileProvider.init(context);
-      } else {
-        return;
-      }
+      await _fileProvider.init();
 
+      if (!context.mounted) return;
       // 初始化完成后加载文件
-      if (context.mounted) {
-        await _fileProvider.loadFiles();
-      }
+      await _fileProvider.loadFiles();
     } catch (e) {
       debugPrint('FileProvider 初始化失败: $e');
     }

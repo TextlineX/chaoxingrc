@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:dio/dio.dart'; // Added import for Options and ResponseType
 import '../services/chaoxing/cookie_sync.dart';
 import '../services/chaoxing/api_client.dart';
 import '../providers/user_provider.dart';
@@ -261,7 +260,10 @@ class _WebViewLoginScreenState extends State<WebViewLoginScreen> {
             });
           } else {
             // 自动验证登录状态
-            _validateLogin();
+            final ok = await _validateLogin();
+            if (ok && mounted) {
+              _handleLoginSuccess();
+            }
           }
         }
       } else {
@@ -289,9 +291,9 @@ class _WebViewLoginScreenState extends State<WebViewLoginScreen> {
       }
 
       await ChaoxingApiClient().init();
-      final dio = ChaoxingApiClient().dio;
 
-      // 验证登录状态
+      // 设置更合理的超时时间
+      final dio = ChaoxingApiClient().dio;
       final response = await dio.get(
         'https://groupweb.chaoxing.com/pc/resource/getResourceList',
         queryParameters: {
@@ -299,63 +301,52 @@ class _WebViewLoginScreenState extends State<WebViewLoginScreen> {
           'folderId': '-1',
           'recType': '1',
         },
-        options: Options(
-          responseType: ResponseType.plain,
-          headers: {
-            'Referer': 'https://pan-yz.chaoxing.com/',
-            'Origin': 'https://pan-yz.chaoxing.com',
-          },
-        ),
       );
 
-      // 检查响应内容
-      final content = response.data.toString();
-      // 登录失效通常会重定向到登录页，或者返回HTML页面而不是JSON
-      // 如果返回的是登录页面，说明登录失效
-      // 增加对 "验证码登录" 等关键字的检测，因为登录页可能包含这些词
-      if (content.contains('<title>用户登录</title>') ||
-          content.contains('passport2.chaoxing.com/login') ||
-          content.contains('class="lg-container"') ||
-          content.contains('验证码登录') ||
-          content.contains('新用户注册')) {
-        debugPrint('Login validation failed: Returned login page');
-        if (mounted) {
+      // 更严格的登录验证
+      if (response.statusCode == 200) {
+        final data = response.data.toString();
+        final isLoggedIn = !data.contains('login') &&
+            !data.contains('未登录') &&
+            !data.contains('please login') &&
+            !data.contains('redirect');
+
+        if (isLoggedIn && mounted) {
           setState(() {
-            _status = '验证失败：Cookie已过期或BBSID无效';
+            _status = '登录验证成功';
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('验证失败，请重新登录')),
-          );
         }
-        return false;
+        return isLoggedIn;
       }
-
-      // 尝试解析 JSON
-      try {
-        // 某些情况下可能返回 JSON
-        // 如果是有效的 JSON 且包含 result: 1 或 success: true，则认为成功
-        // 但超星网盘 API 有时即使成功也返回 HTML 片段，所以主要依赖上面的 HTML 检测
-        debugPrint('Validation response length: ${content.length}');
-
-        // 如果响应体非常短（例如小于500字符），并且不包含上述登录关键字，
-        // 且状态码是200，即使它不是JSON，我们也暂时认为它是有效的响应
-        // 因为 API 可能返回空列表的 HTML 片段
-
-        // 如果能成功获取数据，说明登录有效
-        return true;
-      } catch (e) {
-        // 忽略解析错误，只要不是登录页面就算成功
-        return true;
-      }
+      return false;
     } catch (e) {
-      debugPrint('Login validation error: $e');
+      debugPrint('登录验证错误: $e');
       if (mounted) {
         setState(() {
-          _status = '验证出错: $e';
+          _status = '验证失败，请检查网络连接或确保信息正确';
         });
       }
       return false;
     }
+  }
+
+  void _handleLoginSuccess() {
+    if (!mounted) return;
+
+    setState(() {
+      _status = '登录成功，即将跳转...';
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('登录成功！')),
+    );
+
+    // 延迟跳转，让用户看到成功提示
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
+    });
   }
 
   Future<void> _showManualBbsidDialog() async {
@@ -409,11 +400,8 @@ class _WebViewLoginScreenState extends State<WebViewLoginScreen> {
         try {
           await context.read<UserProvider>().init();
         } catch (_) {}
-        if (mounted) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) Navigator.pop(context);
-          });
-        }
+
+        _handleLoginSuccess();
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -568,8 +556,14 @@ class _WebViewLoginScreenState extends State<WebViewLoginScreen> {
                     await context.read<UserProvider>().setBbsid(bbsidParam);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('已自动设置BBSID')),
+                        const SnackBar(content: Text('已自动设置BBSID')),
                       );
+
+                      // 尝试验证登录
+                      final ok = await _validateLogin();
+                      if (ok && mounted) {
+                        _handleLoginSuccess();
+                      }
                     }
                   } catch (e) {
                     debugPrint('Failed to save bbsid: $e');

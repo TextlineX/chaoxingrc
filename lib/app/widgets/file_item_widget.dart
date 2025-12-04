@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/file_provider.dart';
 import '../models/file_item.dart';
 import '../utils/file_operations.dart';
+import '../providers/transfer_provider.dart';
 
 class FileItemWidget extends StatefulWidget {
   final FileItem file;
@@ -25,17 +26,20 @@ class FileItemWidget extends StatefulWidget {
 }
 
 class _FileItemWidgetState extends State<FileItemWidget> {
-  
   // Helper for file size formatting
   String _formatFileSize(int size) {
     if (size < 1024) return '$size B';
-    if (size < 1024 * 1024) return '${(size / 1024).toStringAsFixed(1)} KB';
-    if (size < 1024 * 1024 * 1024) return '${(size / 1024 / 1024).toStringAsFixed(1)} MB';
+    if (size < 1024 * 1024) {
+      return '${(size / 1024).toStringAsFixed(1)} KB';
+    }
+    if (size < 1024 * 1024 * 1024) {
+      return '${(size / 1024 / 1024).toStringAsFixed(1)} MB';
+    }
     return '${(size / 1024 / 1024 / 1024).toStringAsFixed(1)} GB';
   }
-  
+
   String _formatDate(DateTime date) {
-      return "${date.year}-${date.month.toString().padLeft(2,'0')}-${date.day.toString().padLeft(2,'0')}";
+    return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
   }
 
   @override
@@ -47,7 +51,9 @@ class _FileItemWidgetState extends State<FileItemWidget> {
       onLongPress: widget.onLongPress,
       child: Container(
         decoration: BoxDecoration(
-          color: widget.isSelected ? Theme.of(context).colorScheme.primaryContainer : null,
+          color: widget.isSelected
+              ? Theme.of(context).colorScheme.primaryContainer
+              : null,
           borderRadius: BorderRadius.circular(4),
         ),
         child: ListTile(
@@ -110,16 +116,16 @@ class _FileItemWidgetState extends State<FileItemWidget> {
                       ),
                     ),
                     if (!widget.file.isFolder)
-                    PopupMenuItem<String>(
-                      value: 'download',
-                      child: Row(
-                        children: const [
-                          Icon(Icons.download, size: 16),
-                          SizedBox(width: 8),
-                          Text('下载 (未实现)'),
-                        ],
+                      PopupMenuItem<String>(
+                        value: 'download',
+                        child: Row(
+                          children: const [
+                            Icon(Icons.download, size: 16),
+                            SizedBox(width: 8),
+                            Text('下载'),
+                          ],
+                        ),
                       ),
-                    ),
                   ],
                   onSelected: (String value) {
                     switch (value) {
@@ -127,9 +133,26 @@ class _FileItemWidgetState extends State<FileItemWidget> {
                         FileOperations.showFileInfo(context, widget.file);
                         break;
                       case 'download':
-                         ScaffoldMessenger.of(context).showSnackBar(
-                             const SnackBar(content: Text('下载功能暂未实现'))
-                         );
+                        // 调用全局 TransferProvider 添加下载任务
+                        final transferProvider =
+                            context.read<TransferProvider>();
+                        transferProvider.addDownloadTask(
+                          fileId: widget.file.id,
+                          fileName: widget.file.name,
+                          fileSize: widget.file.size,
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('已添加下载任务: ${widget.file.name}'),
+                            action: SnackBarAction(
+                              label: '查看',
+                              onPressed: () {
+                                // TODO: 跳转到传输列表
+                                // 这里可能需要一个回调或者全局导航
+                              },
+                            ),
+                          ),
+                        );
                         break;
                     }
                   },
@@ -141,7 +164,7 @@ class _FileItemWidgetState extends State<FileItemWidget> {
 
   IconData _getFileIcon(String fileType) {
     if (widget.file.isFolder) return Icons.folder;
-    
+
     switch (fileType.toLowerCase()) {
       case 'image':
       case 'jpg':
@@ -185,7 +208,7 @@ class _FileItemWidgetState extends State<FileItemWidget> {
   }
 
   Color _getFileTypeColor(String fileType, BuildContext context) {
-      if (widget.file.isFolder) return Colors.amber;
-      return Theme.of(context).colorScheme.primary;
+    if (widget.file.isFolder) return Colors.amber;
+    return Theme.of(context).colorScheme.primary;
   }
 }

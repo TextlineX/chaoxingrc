@@ -21,7 +21,7 @@ class GlobalProviders {
       // 并行初始化其他 Provider
       await Future.wait([
         transferProvider.init(notify: false, context: null),
-        fileProvider.init(null, notify: false),
+        fileProvider.init(notify: false),
       ]);
       debugPrint('TransferProvider 和 FileProvider 初始化完成');
 

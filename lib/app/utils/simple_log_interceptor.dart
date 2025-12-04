@@ -8,9 +8,17 @@ class SimpleLogInterceptor extends Interceptor {
       debugPrint('┌── REQUEST ──────────────────────────────────────────────────────────────────────');
       debugPrint('│ ${options.method} ${options.uri}');
       
-      // 只打印关键头部，过滤掉常见的冗长头部
+      // 只打印关键头部
       options.headers.forEach((key, value) {
-        if (key.toLowerCase() != 'cookie' && key.toLowerCase() != 'user-agent') {
+        if (key.toLowerCase() == 'cookie') {
+           // 打印 Cookie，稍微截断以防太长，但保留关键信息
+           String cookieStr = value.toString();
+           if (cookieStr.length > 200) {
+             debugPrint('│ $key: ${cookieStr.substring(0, 200)}... [Total length: ${cookieStr.length}]');
+           } else {
+             debugPrint('│ $key: $cookieStr');
+           }
+        } else if (key.toLowerCase() != 'user-agent') {
           debugPrint('│ $key: $value');
         }
       });

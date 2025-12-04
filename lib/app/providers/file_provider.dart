@@ -45,7 +45,7 @@ class FileProvider extends ChangeNotifier {
     return '${(_totalSize / (1024 * 1024 * 1024)).toStringAsFixed(1)}GB';
   }
 
-  Future<void> init(BuildContext? context, {bool notify = true}) async {
+  Future<void> init({bool notify = true}) async {
     if (_isInitialized) return;
     _isInitialized = true;
     if (notify) notifyListeners();

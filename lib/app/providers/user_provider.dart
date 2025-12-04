@@ -20,6 +20,8 @@ class UserProvider extends ChangeNotifier {
   String get error => _error;
   bool get isDeveloperMode => _isDeveloperMode;
   bool get isInitialized => _isInitialized;
+  List<Map<String, dynamic>> get circles => _authManager.circles;
+  String get currentCircleName => _authManager.currentCircleName;
 
   Future<void> init({bool notify = true}) async {
     await _authManager.init();
@@ -75,6 +77,11 @@ class UserProvider extends ChangeNotifier {
   Future<void> setBbsid(String bbsid) async {
     await _authManager.setBbsid(bbsid);
     _bbsid = bbsid;
+    notifyListeners();
+  }
+  
+  Future<void> setCircles(List<Map<String, dynamic>> circles) async {
+    await _authManager.setCircles(circles);
     notifyListeners();
   }
 

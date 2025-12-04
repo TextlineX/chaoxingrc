@@ -25,36 +25,21 @@ class ChaoxingFileService {
           await _apiClient.getResourceList(bbsid, folderId, isFile: false);
       debugPrint('Folder response: ${folderResponse.data}');
 
-      // 尝试解析响应数据，处理可能的字符串类型数据
-      Map<String, dynamic>? folderData;
-      if (folderResponse.data is String) {
-        // API 可能返回 HTML 错误页或其他非 JSON 字符串
-        try {
-           // 这里通常不应该是字符串，如果是，说明 API 返回了非预期的响应（如 HTML）
-           // 记录日志并跳过
-           debugPrint('Folder response is string, possibly HTML error page');
-        } catch (e) {
-           // ignore
-        }
-      } else if (folderResponse.data is Map<String, dynamic>) {
-        folderData = folderResponse.data;
-      }
-
-      if (folderData != null && folderData['result'] == 1) {
+      if (folderResponse.data != null && folderResponse.data['result'] == 1) {
         // Check for userAuth which might indicate special state or root folder info
-        if (folderData['userAuth'] != null) {
+        if (folderResponse.data['userAuth'] != null) {
           debugPrint(
-              'Folder response contains userAuth: ${folderData['userAuth']}');
+              'Folder response contains userAuth: ${folderResponse.data['userAuth']}');
         }
 
         // 尝试多种可能的列表字段名
         List list = [];
-        if (folderData['list'] != null) {
-          list = folderData['list'];
-        } else if (folderData['_list'] != null) {
-          list = folderData['_list'];
-        } else if (folderData['data'] != null) {
-          list = folderData['data'];
+        if (folderResponse.data['list'] != null) {
+          list = folderResponse.data['list'];
+        } else if (folderResponse.data['_list'] != null) {
+          list = folderResponse.data['_list'];
+        } else if (folderResponse.data['data'] != null) {
+          list = folderResponse.data['data'];
         }
 
         debugPrint('Processing ${list.length} folders');
@@ -66,27 +51,22 @@ class ChaoxingFileService {
           await _apiClient.getResourceList(bbsid, folderId, isFile: true);
       debugPrint('File response: ${fileResponse.data}');
 
-      Map<String, dynamic>? fileData;
-      if (fileResponse.data is Map<String, dynamic>) {
-        fileData = fileResponse.data;
-      }
-
-      if (fileData != null && fileData['result'] == 1) {
+      if (fileResponse.data != null && fileResponse.data['result'] == 1) {
         // Check for userAuth which might indicate why list is empty
-        if (fileData['userAuth'] != null) {
+        if (fileResponse.data['userAuth'] != null) {
           debugPrint(
-              'File response contains userAuth: ${fileData['userAuth']}');
+              'File response contains userAuth: ${fileResponse.data['userAuth']}');
           // TODO: If userAuth is present and list is missing, it might mean we need to use a different folderId or puid
         }
 
         // 尝试多种可能的列表字段名
         List list = [];
-        if (fileData['list'] != null) {
-          list = fileData['list'];
-        } else if (fileData['_list'] != null) {
-          list = fileData['_list'];
-        } else if (fileData['data'] != null) {
-          list = fileData['data'];
+        if (fileResponse.data['list'] != null) {
+          list = fileResponse.data['list'];
+        } else if (fileResponse.data['_list'] != null) {
+          list = fileResponse.data['_list'];
+        } else if (fileResponse.data['data'] != null) {
+          list = fileResponse.data['data'];
         }
 
         debugPrint('Processing ${list.length} files');
