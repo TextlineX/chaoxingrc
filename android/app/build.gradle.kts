@@ -33,6 +33,20 @@ android {
         manifestPlaceholders["largeHeap"] = "true"
     }
 
+    flavorDimensions += "env"
+
+    productFlavors {
+        create("test") {
+            dimension = "env"
+            applicationIdSuffix = ".test"
+            resValue("string", "app_name", "超星网盘(测试)")
+        }
+        create("prod") {
+            dimension = "env"
+            resValue("string", "app_name", "超星网盘")
+        }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
