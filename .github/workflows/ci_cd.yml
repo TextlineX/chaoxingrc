@@ -59,20 +59,20 @@ jobs:
 
       # 仅在 Release 模式下构建 APK/AAB
       - name: Build Artifacts
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         run: |
           flutter build apk --release
           flutter build appbundle --release
           
       - name: Upload APK
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
           name: app-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           
       - name: Upload AAB
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
           name: app-release-aab
