@@ -55,6 +55,13 @@ class TransferTaskAdapter extends TypeAdapter<TransferTask> {
       downloadedBytes = 0;
     }
 
+    String? bbsid;
+    try {
+      bbsid = reader.read();
+    } catch (e) {
+      bbsid = null;
+    }
+
     return TransferTask(
       id: id,
       fileName: fileName,
@@ -71,6 +78,7 @@ class TransferTaskAdapter extends TypeAdapter<TransferTask> {
       createdAt: DateTime.fromMillisecondsSinceEpoch(createdAtMillis),
       completedAt: completedAt,
       extra: extra,
+      bbsid: bbsid,
     );
   }
 
@@ -100,5 +108,6 @@ class TransferTaskAdapter extends TypeAdapter<TransferTask> {
     }
     // Append new fields
     writer.write(obj.downloadedBytes);
+    writer.write(obj.bbsid);
   }
 }

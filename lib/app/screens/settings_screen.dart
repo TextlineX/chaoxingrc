@@ -4,7 +4,7 @@ import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
 import '../services/download_path_service.dart';
 import 'package:file_selector/file_selector.dart';
-import './webview_login_screen.dart';
+import './login_screen.dart';
 import './debug_control_screen.dart';
 
 // 简单的颜色选择器 Dialog
@@ -271,7 +271,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const WebViewLoginScreen(),
+                            builder: (context) => const LoginScreen(),
                           ),
                         );
                       },

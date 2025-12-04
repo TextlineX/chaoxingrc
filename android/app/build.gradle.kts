@@ -28,24 +28,21 @@ android {
         targetSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        
-        // 增加堆内存大小
-        manifestPlaceholders["largeHeap"] = "true"
     }
 
-    flavorDimensions += "env"
+    // flavorDimensions += "env"
 
-    productFlavors {
-        create("beta") {
-            dimension = "env"
-            applicationIdSuffix = ".beta"
-            resValue("string", "app_name", "超星网盘(测试)")
-        }
-        create("prod") {
-            dimension = "env"
-            resValue("string", "app_name", "超星网盘")
-        }
-    }
+    // productFlavors {
+    //     create("beta") {
+    //         dimension = "env"
+    //         applicationIdSuffix = ".beta"
+    //         resValue("string", "app_name", "超星网盘(测试)")
+    //     }
+    //     create("prod") {
+    //         dimension = "env"
+    //         resValue("string", "app_name", "超星网盘")
+    //     }
+    // }
 
     buildTypes {
         release {
@@ -57,11 +54,6 @@ android {
             // 调试版本也增加内存
             isDebuggable = true
         }
-    }
-    
-    // 增加JVM堆内存大小
-    dexOptions {
-        javaMaxHeapSize = "4g"
     }
 }
 

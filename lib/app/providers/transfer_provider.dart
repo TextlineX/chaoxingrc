@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import 'package:dio/dio.dart';
 import '../models/transfer_task.dart';
 import 'file_provider.dart';
+import 'user_provider.dart';
 import '../services/download_path_service.dart';
 
 import 'package:hive/hive.dart';
@@ -16,6 +17,7 @@ class TransferProvider extends ChangeNotifier {
   final List<TransferTask> _tasks = [];
   final Uuid _uuid = const Uuid();
   FileProvider? _fileProvider;
+  UserProvider? _userProvider; // To get current bbsid
   Box? _taskBox;
   // Map to keep track of cancel tokens for Dio requests
   final Map<String, CancelToken> _cancelTokens = {};
@@ -24,11 +26,18 @@ class TransferProvider extends ChangeNotifier {
     _fileProvider = fileProvider;
   }
 
+  void setUserProvider(UserProvider userProvider) {
+    _userProvider?.removeListener(notifyListeners);
+    _userProvider = userProvider;
+    _userProvider?.addListener(notifyListeners);
+  }
+
   Future<void> init({bool notify = true, BuildContext? context}) async {
     _taskBox = Hive.box('transfer_tasks');
+    // We don't load tasks into _tasks here because we want to filter them in the getter.
+    // But actually, we DO need to load them into _tasks first so the getter has a source.
+    // And we need to ensure _tasks contains ALL tasks from the box.
     _loadTasks();
-
-    // Resume pending tasks if needed (optional)
 
     if (notify) notifyListeners();
   }
@@ -41,6 +50,12 @@ class TransferProvider extends ChangeNotifier {
       _tasks.add(task);
     }
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _userProvider?.removeListener(notifyListeners);
+    super.dispose();
   }
 
   void _saveTasks() {
@@ -66,17 +81,32 @@ class TransferProvider extends ChangeNotifier {
     }
   }
 
-  List<TransferTask> get tasks => [..._tasks];
-  List<TransferTask> get activeTasks => _tasks
+  // Get tasks for current circle (bbsid)
+  // If bbsid is not available, return all tasks or empty list based on requirement
+  // User requested "separate", so we filter by current bbsid.
+  List<TransferTask> get tasks {
+    final currentBbsid = _userProvider?.bbsid;
+    if (currentBbsid == null || currentBbsid.isEmpty) {
+      return [..._tasks]; // Fallback: show all if no bbsid (e.g. not logged in)
+    }
+    return _tasks
+        .where((t) => t.bbsid == currentBbsid || t.bbsid == null)
+        .toList();
+  }
+
+  // Helper to get all tasks (if needed for debugging or global view)
+  List<TransferTask> get allTasks => [..._tasks];
+
+  List<TransferTask> get activeTasks => tasks
       .where((task) =>
           task.status == TransferStatus.uploading ||
           task.status == TransferStatus.downloading ||
           task.status == TransferStatus.pending)
       .toList();
   List<TransferTask> get uploadTasks =>
-      _tasks.where((task) => task.type == TransferType.upload).toList();
+      tasks.where((task) => task.type == TransferType.upload).toList();
   List<TransferTask> get downloadTasks =>
-      _tasks.where((task) => task.type == TransferType.download).toList();
+      tasks.where((task) => task.type == TransferType.download).toList();
 
   // Stub methods to prevent errors
   String addUploadTask(
@@ -95,6 +125,9 @@ class TransferProvider extends ChangeNotifier {
       required int fileSize}) async {
     final taskId = _uuid.v4();
 
+    // Capture current bbsid
+    final currentBbsid = _userProvider?.bbsid;
+
     // 创建初始任务
     final task = TransferTask(
       id: taskId,
@@ -107,6 +140,7 @@ class TransferProvider extends ChangeNotifier {
       progress: 0.0,
       speed: 0,
       createdAt: DateTime.now(),
+      bbsid: currentBbsid, // Store bbsid
     );
 
     _tasks.add(task);
@@ -234,7 +268,7 @@ class TransferProvider extends ChangeNotifier {
           // If current status is downloading, it means it was canceled but status not updated yet (unlikely with current logic)
           // Or if we want to support "pause" via cancel
           if (currentStatus == TransferStatus.downloading) {
-             _updateTaskStatus(task.id, TransferStatus.pending);
+            _updateTaskStatus(task.id, TransferStatus.pending);
           }
         }
       } else {
@@ -258,7 +292,8 @@ class TransferProvider extends ChangeNotifier {
   Future<void> pauseTask(String taskId) async {
     if (_cancelTokens.containsKey(taskId)) {
       // Update status first to avoid race condition in catch block
-      _updateTaskStatus(taskId, TransferStatus.pending); // Using pending to indicate paused
+      _updateTaskStatus(
+          taskId, TransferStatus.pending); // Using pending to indicate paused
       _cancelTokens[taskId]!.cancel();
       _cancelTokens.remove(taskId);
     }

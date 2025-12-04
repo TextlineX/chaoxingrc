@@ -30,6 +30,8 @@ class TransferTask {
   DateTime createdAt;
   DateTime? completedAt;
   Map<String, dynamic>? extra;
+  String? bbsid; // Associated circle ID
+
 
   TransferTask({
     required this.id,
@@ -47,6 +49,7 @@ class TransferTask {
     required this.createdAt,
     this.completedAt,
     this.extra,
+    this.bbsid,
   });
 
   TransferTask copyWith({
@@ -67,6 +70,7 @@ class TransferTask {
     DateTime? completedAt,
     DateTime? endTime, // Alias for completedAt
     Map<String, dynamic>? extra,
+    String? bbsid,
   }) {
     return TransferTask(
       id: id ?? this.id,
@@ -84,6 +88,7 @@ class TransferTask {
       createdAt: createdAt ?? this.createdAt,
       completedAt: completedAt ?? endTime ?? this.completedAt,
       extra: extra ?? this.extra,
+      bbsid: bbsid ?? this.bbsid,
     );
   }
 

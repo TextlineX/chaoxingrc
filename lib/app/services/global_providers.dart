@@ -27,6 +27,7 @@ class GlobalProviders {
 
       // 设置Provider之间的关系
       transferProvider.setFileProvider(fileProvider);
+      transferProvider.setUserProvider(userProvider);
 
       debugPrint('全局提供者初始化完成');
       debugPrint('UserProvider 登录状态: ${userProvider.isLoggedIn}');

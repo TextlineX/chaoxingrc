@@ -7,7 +7,7 @@ import 'routes/app_routes.dart';
 import 'themes/app_theme.dart';
 import 'screens/home_screen.dart';
 import 'screens/splash_screen.dart';
-import 'screens/webview_login_screen.dart';
+import 'screens/login_screen.dart';
 import 'widgets/dynamic_theme_builder.dart';
 import 'widgets/debug_panel.dart';
 
@@ -56,7 +56,7 @@ class App extends StatelessWidget {
 
     // 未登录时跳转到网页登录页
     if (!userProvider.isLoggedIn) {
-      return const WebViewLoginScreen();
+      return const LoginScreen();
     }
 
     return const HomeScreen();

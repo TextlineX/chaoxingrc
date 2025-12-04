@@ -96,6 +96,7 @@ Future<void> main() async {
 
   // 初始化 Hive
   await Hive.initFlutter();
+  // Ensure adapters are registered before opening boxes
   Hive.registerAdapter(TransferTaskAdapter());
   try {
     await Hive.openBox('transfer_tasks');
