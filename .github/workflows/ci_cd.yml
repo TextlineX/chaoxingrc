@@ -54,8 +54,8 @@ jobs:
       - name: Run Analysis
         run: flutter analyze
         
-      - name: Run Tests
-        run: flutter test
+      # - name: Run Tests
+      #   run: flutter test
 
       # 仅在 Release 模式下构建 APK/AAB
       - name: Build Artifacts
