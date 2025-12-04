@@ -85,7 +85,9 @@ class NetworkRequestDetailDialog extends StatelessWidget {
                     _buildInfoRow('时间戳', timestamp),
                     _buildInfoRow('请求方法', method, color: Colors.cyan),
                     _buildInfoRow('状态', status, color: statusColor),
-                    if (statusCode != null) _buildInfoRow('状态码', statusCode.toString(), color: statusColor),
+                    if (statusCode != null)
+                      _buildInfoRow('状态码', statusCode.toString(),
+                          color: statusColor),
                     _buildInfoRow('耗时', '\$duration ms', color: Colors.white),
                     _buildInfoRow('URL', url),
 
@@ -93,14 +95,17 @@ class NetworkRequestDetailDialog extends StatelessWidget {
 
                     // 请求头
                     _buildSectionTitle('请求头'),
-                    _buildJsonViewer(request['requestHeaders'] as Map<String, dynamic>?),
+                    _buildJsonViewer(
+                        request['requestHeaders'] as Map<String, dynamic>?),
 
                     const SizedBox(height: 16),
 
                     // 请求参数
-                    if (request['queryParameters'] != null && (request['queryParameters'] as Map).isNotEmpty) ...[
+                    if (request['queryParameters'] != null &&
+                        (request['queryParameters'] as Map).isNotEmpty) ...[
                       _buildSectionTitle('查询参数'),
-                      _buildJsonViewer(request['queryParameters'] as Map<String, dynamic>?),
+                      _buildJsonViewer(
+                          request['queryParameters'] as Map<String, dynamic>?),
                       const SizedBox(height: 16),
                     ],
 
@@ -114,7 +119,8 @@ class NetworkRequestDetailDialog extends StatelessWidget {
                     // 响应头
                     if (request['responseHeaders'] != null) ...[
                       _buildSectionTitle('响应头'),
-                      _buildJsonViewer(request['responseHeaders'] as Map<String, dynamic>?),
+                      _buildJsonViewer(
+                          request['responseHeaders'] as Map<String, dynamic>?),
                       const SizedBox(height: 16),
                     ],
 
@@ -132,9 +138,10 @@ class NetworkRequestDetailDialog extends StatelessWidget {
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
+                          color: Colors.red.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.red.withOpacity(0.3)),
+                          border: Border.all(
+                              color: Colors.red.withValues(alpha: 0.3)),
                         ),
                         child: Text(
                           request['error'].toString(),
@@ -223,7 +230,7 @@ class NetworkRequestDetailDialog extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
+        color: Colors.black.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(4),
       ),
       child: SelectableText(
@@ -239,7 +246,8 @@ class NetworkRequestDetailDialog extends StatelessWidget {
 }
 
 // 显示网络请求详情弹窗的便捷方法
-void showNetworkRequestDetailDialog(BuildContext context, Map<String, dynamic> request) {
+void showNetworkRequestDetailDialog(
+    BuildContext context, Map<String, dynamic> request) {
   showDialog(
     context: context,
     builder: (context) => NetworkRequestDetailDialog(request: request),

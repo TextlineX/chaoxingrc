@@ -23,7 +23,10 @@ class ThemeSelector extends StatelessWidget {
             value: ThemeMode.light,
             groupValue: currentTheme,
             onChanged: (value) {
-              if (value != null) onSelected(value);
+              if (value != null) {
+                onSelected(value);
+                Navigator.of(context).pop();
+              }
             },
           ),
           RadioListTile<ThemeMode>(
@@ -31,7 +34,10 @@ class ThemeSelector extends StatelessWidget {
             value: ThemeMode.dark,
             groupValue: currentTheme,
             onChanged: (value) {
-              if (value != null) onSelected(value);
+              if (value != null) {
+                onSelected(value);
+                Navigator.of(context).pop();
+              }
             },
           ),
           RadioListTile<ThemeMode>(
@@ -39,7 +45,10 @@ class ThemeSelector extends StatelessWidget {
             value: ThemeMode.system,
             groupValue: currentTheme,
             onChanged: (value) {
-              if (value != null) onSelected(value);
+              if (value != null) {
+                onSelected(value);
+                Navigator.of(context).pop();
+              }
             },
           ),
         ],

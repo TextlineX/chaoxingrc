@@ -26,7 +26,7 @@ class ColorPickerDialog extends StatelessWidget {
           itemCount: _colors.length,
           itemBuilder: (context, index) {
             final color = _colors[index];
-            final isSelected = color.value == currentColor.value;
+            final isSelected = color.toARGB32() == currentColor.toARGB32();
 
             return GestureDetector(
               onTap: () => onColorSelected(color),

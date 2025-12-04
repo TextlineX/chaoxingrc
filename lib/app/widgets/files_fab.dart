@@ -83,10 +83,7 @@ class _FilesFloatingActionButtonState extends State<FilesFloatingActionButton>
     final primaryColor = theme.colorScheme.primary;
     final onPrimaryColor = theme.colorScheme.onPrimary;
 
-    print('[FAB] Building widget, expanded: $_isFabExpanded');
-
     if (_isFabExpanded) {
-      print('[FAB] Building expanded FAB with scale: ${_scaleAnimation.value}');
       return AnimatedBuilder(
         animation: _scaleAnimation,
         builder: (context, child) {

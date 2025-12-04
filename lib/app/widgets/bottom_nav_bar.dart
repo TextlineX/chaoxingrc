@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 class BottomNavBar extends StatelessWidget {
@@ -13,7 +12,6 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Get.context = context;
     return Theme(
       data: Theme.of(context).copyWith(
         splashFactory: NoSplash.splashFactory,
@@ -84,9 +82,9 @@ class BottomNavBar extends StatelessWidget {
           horizontal: currentIndex == index ? 12 : 0,
         ),
         decoration: BoxDecoration(
-          color: currentIndex == index 
-            ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-            : Colors.transparent,
+          color: currentIndex == index
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Icon(icon),
@@ -95,7 +93,7 @@ class BottomNavBar extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
         ),
         child: activeIcon,
@@ -107,5 +105,5 @@ class BottomNavBar extends StatelessWidget {
 
 // 添加一个简单的上下文访问助手类
 class Get {
-  static BuildContext? context; 
+  static BuildContext? context;
 }

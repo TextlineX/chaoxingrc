@@ -107,8 +107,8 @@ class _SimpleFloatingActionButtonState extends State<SimpleFloatingActionButton>
               heroTag: tooltip,
               mini: true,
               onPressed: onPressed,
-              child: Icon(icon),
               tooltip: tooltip,
+              child: Icon(icon),
             ),
           );
         },

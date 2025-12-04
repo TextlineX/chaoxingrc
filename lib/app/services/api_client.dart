@@ -634,18 +634,18 @@ class ApiClient {
 // 重试拦截器
 class RetryInterceptor extends Interceptor {
   @override
-  void onError(DioException error, ErrorInterceptorHandler handler) async {
-    final extra = error.requestOptions.extra;
+  void onError(DioException err, ErrorInterceptorHandler handler) async {
+    final extra = err.requestOptions.extra;
     final retryCount = extra['retryCount'] ?? 0;
 
-    if (retryCount < 3 && _shouldRetry(error)) {
+    if (retryCount < 3 && _shouldRetry(err)) {
       extra['retryCount'] = retryCount + 1;
       final delay = Duration(seconds: [1, 2, 3][retryCount]);
 
       await Future.delayed(delay);
       try {
         // 使用Dio的静态方法重试请求
-        final response = await Dio().fetch(error.requestOptions);
+        final response = await Dio().fetch(err.requestOptions);
         handler.resolve(response);
         return;
       } catch (e) {

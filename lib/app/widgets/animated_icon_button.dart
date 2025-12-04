@@ -73,7 +73,7 @@ class _AnimatedIconButtonState extends State<AnimatedIconButton>
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
-                color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
               ),
               child: widget.icon,
             ),
