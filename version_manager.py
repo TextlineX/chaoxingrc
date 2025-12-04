@@ -6,19 +6,19 @@ from datetime import datetime
 def load_version_config():
     """加载版本配置文件"""
     config_path = os.path.join(os.path.dirname(__file__), 'version_config.json')
-    with open(config_path, 'r') as f:
+    with open(config_path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
 def save_version_config(config):
     """保存版本配置文件"""
     config_path = os.path.join(os.path.dirname(__file__), 'version_config.json')
-    with open(config_path, 'w') as f:
+    with open(config_path, 'w', encoding='utf-8') as f:
         json.dump(config, f, indent=2)
 
 def update_pubspec_version(version_string):
     """更新pubspec.yaml中的版本号"""
     pubspec_path = os.path.join(os.path.dirname(__file__), 'pubspec.yaml')
-    with open(pubspec_path, 'r') as f:
+    with open(pubspec_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
 
     for i, line in enumerate(lines):
@@ -26,7 +26,7 @@ def update_pubspec_version(version_string):
             lines[i] = f'version: {version_string}\n'
             break
 
-    with open(pubspec_path, 'w') as f:
+    with open(pubspec_path, 'w', encoding='utf-8') as f:
         f.writelines(lines)
 
 def increment_version(increment_type='build'):
