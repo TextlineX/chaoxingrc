@@ -8,7 +8,7 @@ class FileProvider extends ChangeNotifier {
   List<FileItem> _files = [];
   bool _isLoading = false;
   String? _error;
-  List<Map<String, String>> _pathHistory = [
+  final List<Map<String, String>> _pathHistory = [
     {'id': '-1', 'name': '根目录'}
   ];
   int _totalSize = 0;
@@ -33,11 +33,15 @@ class FileProvider extends ChangeNotifier {
   bool isFileSelected(String fileId) => _selectedFileIds.contains(fileId);
 
   String get formattedTotalSize {
-    if (_totalSize < 1024) return '${_totalSize}B';
-    if (_totalSize < 1024 * 1024)
+    if (_totalSize < 1024) {
+      return '${_totalSize}B';
+    }
+    if (_totalSize < 1024 * 1024) {
       return '${(_totalSize / 1024).toStringAsFixed(1)}KB';
-    if (_totalSize < 1024 * 1024 * 1024)
+    }
+    if (_totalSize < 1024 * 1024 * 1024) {
       return '${(_totalSize / (1024 * 1024)).toStringAsFixed(1)}MB';
+    }
     return '${(_totalSize / (1024 * 1024 * 1024)).toStringAsFixed(1)}GB';
   }
 

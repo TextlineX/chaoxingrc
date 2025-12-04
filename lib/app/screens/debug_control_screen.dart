@@ -1,4 +1,3 @@
-
 // 调试控制页面 - 管理调试输出的开关
 import 'package:flutter/material.dart';
 import '../services/debug_settings_service.dart';
@@ -52,10 +51,12 @@ class _DebugControlScreenState extends State<DebugControlScreen> {
                       ElevatedButton.icon(
                         onPressed: () async {
                           await _debugSettings.enableAll();
-                          setState(() {});
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('已启用所有调试输出')),
-                          );
+                          if (mounted) {
+                            setState(() {});
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('已启用所有调试输出')),
+                            );
+                          }
                         },
                         icon: const Icon(Icons.check_circle),
                         label: const Text('全部启用'),
@@ -63,10 +64,12 @@ class _DebugControlScreenState extends State<DebugControlScreen> {
                       ElevatedButton.icon(
                         onPressed: () async {
                           await _debugSettings.disableAll();
-                          setState(() {});
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('已禁用所有调试输出')),
-                          );
+                          if (mounted) {
+                            setState(() {});
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('已禁用所有调试输出')),
+                            );
+                          }
                         },
                         icon: const Icon(Icons.cancel),
                         label: const Text('全部禁用'),
@@ -203,13 +206,13 @@ class _DebugControlScreenState extends State<DebugControlScreen> {
     );
   }
 
-  Widget _buildSwitchTile(String title, String subtitle, bool value, Function(bool) onChanged) {
+  Widget _buildSwitchTile(
+      String title, String subtitle, bool value, Function(bool) onChanged) {
     return SwitchListTile(
       title: Text(title),
       subtitle: Text(subtitle),
       value: value,
       onChanged: onChanged,
-      activeColor: Theme.of(context).colorScheme.primary,
     );
   }
 }

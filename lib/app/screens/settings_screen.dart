@@ -52,11 +52,11 @@ class ColorPickerDialog extends StatelessWidget {
               decoration: BoxDecoration(
                 color: color,
                 shape: BoxShape.circle,
-                border: color.value == initialColor.value
+                border: color == initialColor
                     ? Border.all(color: Colors.black, width: 2)
                     : null,
               ),
-              child: color.value == initialColor.value
+              child: color == initialColor
                   ? const Icon(Icons.check, color: Colors.white)
                   : null,
             ),

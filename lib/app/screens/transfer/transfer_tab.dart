@@ -49,8 +49,8 @@ class _TransferTabState extends State<TransferTab>
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                primaryColor.withOpacity(0.1),
-                primaryColor.withOpacity(0.05),
+                primaryColor.withValues(alpha: 0.1),
+                primaryColor.withValues(alpha: 0.05),
                 Colors.transparent,
               ],
             ),
@@ -130,7 +130,7 @@ class _TransferTabState extends State<TransferTab>
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: primaryColor.withOpacity(0.1),
+                    color: primaryColor.withValues(alpha: 0.1),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -142,7 +142,7 @@ class _TransferTabState extends State<TransferTab>
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: primaryColor.withOpacity(0.1),
+                      color: primaryColor.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: type == TransferType.upload
