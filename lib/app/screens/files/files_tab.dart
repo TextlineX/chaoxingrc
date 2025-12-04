@@ -43,10 +43,14 @@ class _FilesTabState extends State<FilesTab> {
 
       if (!context.mounted) return;
       // 初始化 FileProvider
+      // 这里的 context 是 State 的 context 属性，在 await 之后需要再次检查
+      // 但既然前面已经检查了 !context.mounted return，这里其实是安全的
+      // 不过分析器可能认为 _fileProvider.init(context) 内部可能会保存 context 并在稍后使用
+      // 实际上 _fileProvider.init(context) 只是为了获取 Provider 或显示 SnackBar
       await _fileProvider.init(context);
 
       // 初始化完成后加载文件
-      if (mounted) {
+      if (context.mounted) {
         await _fileProvider.loadFiles();
       }
     } catch (e) {
