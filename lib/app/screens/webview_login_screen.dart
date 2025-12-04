@@ -282,8 +282,7 @@ class _WebViewLoginScreenState extends State<WebViewLoginScreen> {
 
   Future<bool> _validateLogin() async {
     try {
-      final bbsid = context.read<UserProvider>().bbsid;
-      if (bbsid.isEmpty) {
+      if (context.read<UserProvider>().bbsid.isEmpty) {
         return false;
       }
 
@@ -294,7 +293,7 @@ class _WebViewLoginScreenState extends State<WebViewLoginScreen> {
       final response = await dio.get(
         'https://groupweb.chaoxing.com/pc/resource/getResourceList',
         queryParameters: {
-          'bbsid': bbsid,
+          'bbsid': context.read<UserProvider>().bbsid,
           'folderId': '-1',
           'recType': '1',
         },
@@ -532,7 +531,6 @@ class _WebViewLoginScreenState extends State<WebViewLoginScreen> {
                   bbsidParam.length > 10) {
                 // 异步保存，避免阻塞导航
                 Future.microtask(() async {
-                  if (!mounted) return;
                   try {
                     await context.read<UserProvider>().setBbsid(bbsidParam);
                     if (mounted) {

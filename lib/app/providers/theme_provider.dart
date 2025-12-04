@@ -44,7 +44,7 @@ class ThemeProvider extends ChangeNotifier {
 
   Future<void> setSeedColor(Color c) async {
     _seedColor = c;
-    await _prefs.setInt(_colorKey, c.toARGB32());
+    await _prefs.setInt(_colorKey, c.value);
     notifyListeners();
   }
 

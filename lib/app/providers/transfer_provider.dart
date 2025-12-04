@@ -160,7 +160,7 @@ class TransferProvider extends ChangeNotifier {
       final cancelToken = CancelToken();
       _cancelTokens[task.id] = cancelToken;
 
-      final filePath = '$saveDir/${task.fileName}';
+      final filePath = '${saveDir}/${task.fileName}';
 
       // Check for existing partial file for resume
       int startByte = 0;
