@@ -1,0 +1,140 @@
+name: CI/CD
+
+on:
+  # 代码推送或合并 PR 时触发构建测试 (CI)
+  push:
+    branches: [ "main", "master" ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    branches: [ "main", "master" ]
+  
+  # 手动触发发布流程 (CD)
+  workflow_dispatch:
+    inputs:
+      increment_type:
+        description: 'Version Increment Type (版本升级类型)'
+        required: true
+        default: 'build'
+        type: choice
+        options:
+          - build
+          - patch
+          - minor
+          - major
+      release_notes:
+        description: 'Release Notes (发布说明)'
+        required: false
+        type: string
+
+jobs:
+  # 构建任务：所有触发都会运行
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+          
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Run Analysis
+        run: flutter analyze
+        
+      - name: Run Tests
+        run: flutter test
+
+      # 仅在 Release 模式下构建 APK/AAB
+      - name: Build Artifacts
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          flutter build apk --release
+          flutter build appbundle --release
+          
+      - name: Upload APK
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          
+      - name: Upload AAB
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+
+  # 发布任务：仅在手动触发时运行
+  release:
+    name: Create Release
+    needs: build
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          
+      - name: Update Version
+        id: update_version
+        run: |
+          python version_manager.py ${{ inputs.increment_type }}
+          # 获取新版本号
+          NEW_VERSION=$(python -c "import json; print(json.load(open('version_config.json'))['version_string'])" 2>/dev/null || grep 'version:' pubspec.yaml | awk '{print $2}')
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          
+      - name: Commit & Push Version
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add version_config.json pubspec.yaml
+          git commit -m "chore: bump version to ${{ steps.update_version.outputs.version }}"
+          git push
+          
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.update_version.outputs.version }}
+          name: Release v${{ steps.update_version.outputs.version }}
+          body: |
+            ## 🚀 New Release v${{ steps.update_version.outputs.version }}
+            
+            ${{ inputs.release_notes }}
+            
+            ### 📦 Downloads
+            - `app-release.apk`: Universal Android Package
+            - `app-release.aab`: Android App Bundle (for Play Store)
+            
+            ---
+            *Automated build by GitHub Actions*
+          files: |
+            artifacts/app-release-apk/app-release.apk
+            artifacts/app-release-aab/app-release.aab
+          draft: false
+          prerelease: false

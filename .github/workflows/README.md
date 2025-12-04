@@ -1,40 +1,29 @@
+# CI/CD Workflow
 
-# Flutter 自动构建和版本管理
+本项目采用统一的 CI/CD 流程，由 `.github/workflows/ci_cd.yml` 定义。
 
-这个工作流实现了Flutter应用的自动构建和版本管理功能。
+## 1. 自动构建 (CI)
+任何推送到 `main` 或 `master` 分支的代码，以及提交的 Pull Request，都会自动触发构建和测试流程：
+- 运行 `flutter analyze` 检查代码质量。
+- 运行 `flutter test` 执行单元测试。
+- **注意**：此阶段不会生成发布包 (APK/AAB)，也不会发布 Release。
 
-## 功能
+## 2. 手动发布 (CD)
+当您准备好发布新版本时，请按照以下步骤操作：
 
-1. 自动构建Android APK和AAB文件
-2. 自动增加版本号
-3. 创建GitHub Release并上传构建产物
+1. 进入 GitHub 仓库的 **Actions** 标签页。
+2. 选择左侧的 **CI/CD** workflow。
+3. 点击右侧的 **Run workflow** 按钮。
+4. 填写参数：
+   - **Version Increment Type**: 选择版本升级类型 (`build`, `patch`, `minor`, `major`)。
+   - **Release Notes**: (可选) 输入本次更新的说明。
+5. 点击绿色按钮开始运行。
 
-## 触发方式
-
-1. 自动触发：
-   - 当代码推送到`main`或`master`分支时
-   - 当向`main`或`master`分支创建Pull Request时
-
-2. 手动触发：
-   - 在GitHub Actions页面手动运行工作流
-   - 可以选择版本增加类型（build、patch、minor、major）
-
-## 版本管理
-
-项目使用`version_manager.py`脚本管理版本号，版本号格式为：`major.minor.patch+build`
-
-- `build`：默认每次构建增加，用于区分不同的构建版本
-- `patch`：用于修复bug的小版本更新
-- `minor`：用于添加新功能的中版本更新
-- `major`：用于重大变更的大版本更新
-
-## 构建产物
-
-- APK文件：`build/app/outputs/flutter-apk/app-release.apk`
-- AAB文件：`build/app/outputs/bundle/release/app-release.aab`
-
-## 注意事项
-
-1. 手动触发工作流时，版本号会自动增加并提交回仓库
-2. 只有手动触发时才会创建GitHub Release
-3. 自动触发（推送代码）时，默认只增加build号，不会创建Release
+### 运行结果
+Workflow 将会自动执行以下操作：
+1. 检查代码并运行测试。
+2. 构建 Release 版本的 APK 和 AAB。
+3. 自动运行 `version_manager.py` 更新版本号。
+4. 将版本号变更提交回仓库。
+5. 创建一个新的 GitHub Release (Tag 为 `vX.X.X+X`)。
+6. 上传构建好的安装包到 Release 页面。
