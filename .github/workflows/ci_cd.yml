@@ -78,11 +78,11 @@ jobs:
           name: app-release-aab
           path: build/app/outputs/bundle/release/app-release.aab
 
-  # 发布任务：仅在手动触发时运行
+  # 发布任务：手动触发或 Push 到主分支时运行
   release:
     name: Create Release
     needs: build
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -99,7 +99,14 @@ jobs:
       - name: Update Version
         id: update_version
         run: |
-          python version_manager.py ${{ inputs.increment_type }}
+          # 确定升级类型：如果是手动触发则使用输入值，否则默认为 'build'
+          INCREMENT_TYPE="${{ inputs.increment_type }}"
+          if [ -z "$INCREMENT_TYPE" ]; then
+            INCREMENT_TYPE="build"
+          fi
+          
+          python version_manager.py $INCREMENT_TYPE
+          
           # 获取新版本号
           NEW_VERSION=$(python -c "import json; print(json.load(open('version_config.json'))['version_string'])" 2>/dev/null || grep 'version:' pubspec.yaml | awk '{print $2}')
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
