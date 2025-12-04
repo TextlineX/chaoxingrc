@@ -61,22 +61,25 @@ jobs:
       - name: Build Artifacts
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         run: |
-          flutter build apk --release
-          flutter build appbundle --release
+          flutter build apk --flavor beta --release
+          flutter build apk --flavor prod --release
+          flutter build appbundle --flavor prod --release
           
-      - name: Upload APK
+      - name: Upload APKs
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: release-apks
+          path: |
+            build/app/outputs/flutter-apk/app-beta-release.apk
+            build/app/outputs/flutter-apk/app-prod-release.apk
           
       - name: Upload AAB
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-aab
-          path: build/app/outputs/bundle/release/app-release.aab
+          name: release-aab
+          path: build/app/outputs/bundle/prodRelease/app-prod-release.aab
 
   # 发布任务：手动触发或 Push 到主分支时运行
   release:
@@ -135,13 +138,15 @@ jobs:
             ${{ inputs.release_notes }}
             
             ### 📦 Downloads
-            - `app-release.apk`: Universal Android Package
-            - `app-release.aab`: Android App Bundle (for Play Store)
+            - `app-beta-release.apk`: Beta Version (Test)
+            - `app-prod-release.apk`: Production Version
+            - `app-prod-release.aab`: Production App Bundle (for Play Store)
             
             ---
             *Automated build by GitHub Actions*
           files: |
-            artifacts/app-release-apk/app-release.apk
-            artifacts/app-release-aab/app-release.aab
+            artifacts/release-apks/app-beta-release.apk
+            artifacts/release-apks/app-prod-release.apk
+            artifacts/release-aab/app-prod-release.aab
           draft: false
           prerelease: false
