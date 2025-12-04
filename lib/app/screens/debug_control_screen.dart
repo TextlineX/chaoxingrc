@@ -51,12 +51,11 @@ class _DebugControlScreenState extends State<DebugControlScreen> {
                       ElevatedButton.icon(
                         onPressed: () async {
                           await _debugSettings.enableAll();
-                          if (mounted) {
-                            setState(() {});
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('已启用所有调试输出')),
-                            );
-                          }
+                          if (!mounted) return;
+                          setState(() {});
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('已启用所有调试输出')),
+                          );
                         },
                         icon: const Icon(Icons.check_circle),
                         label: const Text('全部启用'),
@@ -64,12 +63,11 @@ class _DebugControlScreenState extends State<DebugControlScreen> {
                       ElevatedButton.icon(
                         onPressed: () async {
                           await _debugSettings.disableAll();
-                          if (mounted) {
-                            setState(() {});
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('已禁用所有调试输出')),
-                            );
-                          }
+                          if (!mounted) return;
+                          setState(() {});
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('已禁用所有调试输出')),
+                          );
                         },
                         icon: const Icon(Icons.cancel),
                         label: const Text('全部禁用'),
