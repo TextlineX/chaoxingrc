@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:dio/dio.dart'; // Added import for Options and ResponseType
 import '../services/chaoxing/cookie_sync.dart';
 import '../services/chaoxing/api_client.dart';
 import '../providers/user_provider.dart';
@@ -288,6 +289,7 @@ class _WebViewLoginScreenState extends State<WebViewLoginScreen> {
       }
 
       await ChaoxingApiClient().init();
+      final dio = ChaoxingApiClient().dio;
 
       // 验证登录状态
       final response = await dio.get(
