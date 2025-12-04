@@ -1,10 +1,9 @@
-// lib/app/services/files_operations.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/file_provider.dart';
 import '../providers/transfer_provider.dart';
 import '../models/file_item.dart';
+import '../models/transfer_task.dart';
 
 class FileOperations {
   // 显示文件信息
@@ -33,35 +32,12 @@ class FileOperations {
     );
   }
 
-  // 显示删除确认
-  static void showDeleteConfirmation(BuildContext context, FileItem file, VoidCallback onDelete) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('确认删除'),
-        content: Text('确定要删除"${file.name}"吗？此操作无法撤销。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              onDelete();
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 处理文件点击 - 下载功能
-  static Future<void> handleFileTap(BuildContext context, FileProvider fileProvider, FileItem file) async {
+  // 处理文件点击 - 支持文件夹进入
+  static Future<void> handleFileTap(
+      BuildContext context, FileProvider fileProvider, FileItem file) async {
     if (file.isFolder) {
-      // 如果是文件夹，不做任何操作，让点击事件继续处理
+      // 如果是文件夹，进入文件夹
+      fileProvider.enterFolder(file.id, file.name);
       return;
     }
 
@@ -69,7 +45,7 @@ class FileOperations {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('文件操作'),
+        title: const Text('文件操作'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -77,7 +53,7 @@ class FileOperations {
             Text('文件: ${file.name}'),
             Text('大小: ${file.formattedSize}'),
             const SizedBox(height: 16),
-            const Text('选择操作方式:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text('确认要下载此文件吗？'),
           ],
         ),
         actions: [
@@ -85,301 +61,312 @@ class FileOperations {
             onPressed: () => Navigator.pop(context),
             child: const Text('取消'),
           ),
-          TextButton(
-            onPressed: () {
+          FilledButton(
+            onPressed: () async {
               Navigator.pop(context);
-              _downloadFileDirectly(context, fileProvider, file);
+
+              try {
+                // Use TransferProvider to start download
+                final transferProvider =
+                    Provider.of<TransferProvider>(context, listen: false);
+                await transferProvider.addDownloadTask(
+                    fileId: file.id, fileName: file.name, fileSize: file.size);
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('已添加到下载任务')),
+                  );
+                }
+              } catch (e) {
+                debugPrint('Start download failed: $e');
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('启动下载失败: $e')),
+                  );
+                }
+              }
             },
-            child: const Text('立即下载'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _addToDownloadQueue(context, fileProvider, file);
-            },
-            child: const Text('加入队列'),
+            child: const Text('下载'),
           ),
         ],
       ),
     );
   }
 
-  // 立即下载文件
-  static Future<void> _downloadFileDirectly(BuildContext context, FileProvider fileProvider, FileItem file) async {
-    try {
-      // 显示加载提示
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('准备下载文件...'),
-          duration: Duration(seconds: 1),
-        ),
-      );
-
-      // 调用下载功能
-      final downloadPath = await fileProvider.downloadFile(file.id, file.name);
-
-      // 显示成功提示
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('文件已下载到: $downloadPath'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-            action: SnackBarAction(
-              label: '打开',
-              onPressed: () {
-                // 可以添加打开文件的功能
-              },
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      debugPrint('下载文件失败: $e');
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('下载失败: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    }
-  }
-
-  // 添加到下载队列
-  static Future<void> _addToDownloadQueue(BuildContext context, FileProvider fileProvider, FileItem file) async {
-    try {
-      // 获取TransferProvider
-      final transferProvider = Provider.of<TransferProvider>(context, listen: false);
-
-      // 添加下载任务
-      await transferProvider.addDownloadTask(fileId: file.id, fileName: file.name, fileSize: file.size);
-
-      // 显示成功提示
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('文件已添加到下载队列'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      debugPrint('添加下载任务失败: $e');
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('添加到队列失败: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    }
-  }
-
   // 处理文件长按
-  static void handleFileLongPress(BuildContext context, FileProvider fileProvider, FileItem file) {
+  static void handleFileLongPress(
+      BuildContext context, FileProvider fileProvider, FileItem file) {
+    // 如果是选择模式，切换选择状态
+    if (fileProvider.isSelectionMode) {
+      fileProvider.toggleFileSelection(file.id);
+      return;
+    }
+
     // 长按时可以选择更多操作
     showModalBottomSheet(
       context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '文件操作',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(Icons.download),
-              title: const Text('下载文件'),
-              subtitle: Text(file.name),
-              onTap: () {
-                Navigator.pop(context);
-                handleFileTap(context, fileProvider, file);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: const Text('文件信息'),
-              onTap: () {
-                Navigator.pop(context);
-                showFileInfo(context, file);
-              },
-            ),
-            if (!file.isFolder)
+      builder: (context) => SafeArea(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                file.name,
+                style: Theme.of(context).textTheme.titleLarge,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 16),
               ListTile(
-                leading: const Icon(Icons.delete_outline),
-                title: const Text('删除文件'),
-                subtitle: const Text('此操作无法撤销'),
+                leading: const Icon(Icons.check_circle_outline),
+                title: const Text('选择'),
                 onTap: () {
                   Navigator.pop(context);
-                  showDeleteConfirmation(context, file, () {
-                    fileProvider.deleteResource(file.id);
-                  });
+                  fileProvider.toggleSelectionMode();
+                  fileProvider.toggleFileSelection(file.id);
                 },
               ),
-          ],
+              // Add "Open with..." option for files
+              if (!file.isFolder)
+                ListTile(
+                  leading: const Icon(Icons.open_in_new),
+                  title: const Text('打开'),
+                  onTap: () async {
+                    Navigator.pop(context);
+
+                    // Check if file is already downloaded and available locally
+                    // This requires integrating with TransferProvider or a local file cache
+                    // For now, let's just show a message that download is required
+
+                    final transferProvider =
+                        Provider.of<TransferProvider>(context, listen: false);
+                    // Try to find if we have a completed task for this file
+                    final completedTask = transferProvider.tasks.firstWhere(
+                      (t) =>
+                          t.fileId == file.id &&
+                          t.status == TransferStatus.completed,
+                      orElse: () => TransferTask(
+                          id: '',
+                          fileName: '',
+                          filePath: '', // Added required parameter
+                          totalSize: 0,
+                          type: TransferType.download,
+                          status: TransferStatus.pending,
+                          progress: 0,
+                          speed: 0,
+                          createdAt: DateTime.now()),
+                    );
+
+                    if (completedTask.id.isNotEmpty &&
+                        completedTask.filePath.isNotEmpty) {
+                      // File might be downloaded, try to open it
+                      await transferProvider.openFile(completedTask.id);
+                    } else {
+                      // Prompt to download first
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('文件未下载'),
+                          content: const Text('需要先下载文件才能打开。是否立即下载？'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('取消'),
+                            ),
+                            FilledButton(
+                              onPressed: () async {
+                                Navigator.pop(context);
+                                await transferProvider.addDownloadTask(
+                                    fileId: file.id,
+                                    fileName: file.name,
+                                    fileSize: file.size);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('开始下载...')),
+                                  );
+                                }
+                              },
+                              child: const Text('下载'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ListTile(
+                leading: const Icon(Icons.edit),
+                title: const Text('重命名'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showRenameDialog(context, fileProvider, file);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('删除', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showDeleteConfirmDialog(context, fileProvider, [file]);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text('详情'),
+                onTap: () {
+                  Navigator.pop(context);
+                  showFileInfo(context, file);
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // 处理批量移动
-  static Future<void> handleBatchMove(BuildContext context, FileProvider fileProvider) async {
-    if (fileProvider.selectedFileIds.isEmpty) return;
+  static void _showRenameDialog(
+      BuildContext context, FileProvider provider, FileItem file) {
+    // Check if renaming is supported for files
+    if (!file.isFolder) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('操作提示'),
+          content: const Text(
+            '此网盘暂不支持直接重命名文件。\n\n您可以尝试以下替代方案：\n1. 下载文件到本地\n2. 删除云端文件\n3. 本地重命名后重新上传',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                Navigator.pop(context);
 
-    String? selectedFolderId;
-    String currentFolderId = fileProvider.currentFolderId;
-    String displayFolderId = '-1';
-    List<String> folderPath = [];
+                try {
+                  // Use TransferProvider to start download
+                  final transferProvider =
+                      Provider.of<TransferProvider>(context, listen: false);
+                  await transferProvider.addDownloadTask(
+                      fileId: file.id,
+                      fileName: file.name,
+                      fileSize: file.size);
 
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                final dialogWidth = constraints.maxWidth < 600 ? constraints.maxWidth * 0.9 : constraints.maxWidth * 0.6;
-                Future<List<FileItem>> getFolders(String folderId) async {
-                  try {
-                    final folderModels = await fileProvider.loadFoldersOnly(folderId: folderId);
-                    return folderModels.map((model) => FileItem(
-                      id: model.id,
-                      name: model.name,
-                      type: model.type,
-                      size: model.size,
-                      uploadTime: model.uploadTime,
-                      isFolder: model.isFolder,
-                      parentId: model.parentId,
-                    )).toList();
-                  } catch (e) {
-                    print('获取文件夹列表失败: $e');
-                    return [];
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('已添加到下载任务，下载完成后请手动处理')),
+                    );
                   }
+                } catch (e) {
+                  debugPrint('Start download failed: $e');
                 }
-                return AlertDialog(
-                  title: Row(
-                    children: [
-                      Expanded(child: Text('选择目标文件夹', overflow: TextOverflow.ellipsis)),
-                      if (displayFolderId != '-1')
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back),
-                          iconSize: 20,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          onPressed: () {
-                            setState(() {
-                              if (folderPath.isNotEmpty) {
-                                displayFolderId = folderPath.removeLast();
-                              } else {
-                                displayFolderId = '-1';
-                              }
-                            });
-                          },
-                        ),
-                    ],
-                  ),
-                  content: SizedBox(
-                    width: dialogWidth,
-                    height: 300,
-                    child: FutureBuilder<List<FileItem>>(
-                      future: getFolders(displayFolderId),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
-                        }
-                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return const Center(child: Text('此文件夹下没有子文件夹'));
-                        }
-                        final folders = snapshot.data!;
-                        return ListView.builder(
-                          itemCount: folders.length,
-                          itemBuilder: (context, index) {
-                            final folder = folders[index];
-                            return ListTile(
-                              leading: const Icon(Icons.folder),
-                              title: Text(folder.name),
-                              trailing: const SizedBox(width: 24, height: 24, child: Icon(Icons.arrow_right, size: 20)),
-                              onTap: () {
-                                setState(() {
-                                  folderPath.add(displayFolderId);
-                                  displayFolderId = folder.id;
-                                });
-                              },
-                              onLongPress: () {
-                                selectedFolderId = folder.id;
-                                Navigator.of(context).pop();
-                              },
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('取消')),
-                    if (displayFolderId != currentFolderId)
-                      TextButton(
-                        onPressed: () {
-                          selectedFolderId = displayFolderId;
-                          Navigator.of(context).pop();
-                        },
-                        child: const Text('选择当前目录'),
-                      ),
-                  ],
-                );
               },
-            );
-          },
-        );
-      },
-    );
-
-    if (selectedFolderId != null) {
-      try {
-        await fileProvider.moveResources(fileProvider.selectedFileIds.map((id) => id.toString()).toList(), selectedFolderId!);
-        fileProvider.toggleSelectionMode();
-
-        // <--- 修正：移除 context 位置参数
-        await fileProvider.loadFiles(folderId: fileProvider.currentFolderId);
-
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('移动完成'),
-              content: const Text('文件已成功移动到目标文件夹'),
-              actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('确定'))],
-            );
-          },
-        );
-      } catch (e) {
-        fileProvider.toggleSelectionMode();
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('移动失败'),
-              content: Text('错误信息: $e'),
-              actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('确定'))],
-            );
-          },
-        );
-      }
+              child: const Text('下载并处理'),
+            ),
+          ],
+        ),
+      );
+      return;
     }
+
+    final controller = TextEditingController(text: file.name);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('重命名文件夹'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            labelText: '新名称',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final newName = controller.text.trim();
+              if (newName.isEmpty || newName == file.name) return;
+
+              Navigator.pop(context);
+              final success =
+                  await provider.renameFile(file.id, newName, file.isFolder);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(success ? '重命名成功' : '重命名失败')),
+                );
+              }
+            },
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
   }
 
-  // ... (handleBatchDelete 方法保持不变) ...
-  static Future<void> handleBatchDelete(BuildContext context, FileProvider fileProvider) async { /* ... */ }
+  static void _showDeleteConfirmDialog(
+      BuildContext context, FileProvider provider, List<FileItem> files) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认删除'),
+        content: Text('确定要删除选中的 ${files.length} 个项目吗？此操作不可恢复。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(context);
+
+              int successCount = 0;
+              for (var file in files) {
+                if (await provider.deleteFile(file.id, file.isFolder)) {
+                  successCount++;
+                }
+              }
+
+              if (provider.isSelectionMode) {
+                provider.toggleSelectionMode(); // Exit selection mode
+              }
+
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('成功删除 $successCount 个项目')),
+                );
+              }
+            },
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Batch move handler (Stub)
+  static void handleBatchMove(BuildContext context, FileProvider provider) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('批量移动功能暂未实现')),
+    );
+  }
+
+  // Batch delete handler
+  static void handleBatchDelete(BuildContext context, FileProvider provider) {
+    final selectedIds = provider.selectedFileIds;
+    final filesToDelete =
+        provider.files.where((f) => selectedIds.contains(f.id)).toList();
+
+    if (filesToDelete.isEmpty) return;
+
+    _showDeleteConfirmDialog(context, provider, filesToDelete);
+  }
 }

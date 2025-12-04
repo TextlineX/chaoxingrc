@@ -46,15 +46,6 @@ class _FilesFloatingActionButtonState extends State<FilesFloatingActionButton>
       parent: _animationController,
       curve: Curves.easeInOut,
     ));
-    
-    // 添加动画状态监听器
-    _animationController.addStatusListener((status) {
-      print('[FAB] Animation status: $status');
-    });
-    
-    _animationController.addListener(() {
-      print('[FAB] Animation value: ${_animationController.value}, Scale: ${_scaleAnimation.value}');
-    });
   }
 
   @override
@@ -64,32 +55,24 @@ class _FilesFloatingActionButtonState extends State<FilesFloatingActionButton>
   }
 
   void _toggleFab() {
-    print('[FAB] _toggleFab called, current state: $_isFabExpanded');
     setState(() {
       _isFabExpanded = !_isFabExpanded;
-      print('[FAB] State changed to: $_isFabExpanded');
       if (_isFabExpanded) {
         _animationController.forward();
-        print('[FAB] Animation forward started');
       } else {
         _animationController.reverse();
-        print('[FAB] Animation reverse started');
       }
     });
   }
 
   // 执行操作后重置浮动按钮状态
   void _executeAction(VoidCallback action) {
-    print('[FAB] _executeAction called');
     // 先收起浮动按钮
     if (_isFabExpanded) {
-      print('[FAB] FAB is expanded, collapsing...');
       _toggleFab();
     }
     // 然后执行操作
-    print('[FAB] Executing action...');
     action();
-    print('[FAB] Action executed');
   }
 
   @override

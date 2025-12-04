@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/user_provider.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/dynamic_theme_builder.dart';
 import '../widgets/animated_icon_button.dart';
@@ -8,7 +6,6 @@ import 'home/home_tab.dart';
 import 'files/files_tab.dart';
 import 'transfer/transfer_tab.dart';
 import 'profile/profile_tab.dart';
-import 'message_screen.dart';
 import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -53,7 +50,6 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    final userProvider = Provider.of<UserProvider>(context);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor, // 确保背景色一致
@@ -83,34 +79,6 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
         actions: [
-          const SizedBox(width: 8),
-          // 消息按钮
-          AnimatedIconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
-                PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) =>
-                  const DynamicThemeBuilder(child: MessageScreen()),
-                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                    const begin = Offset(1.0, 0.0);
-                    const end = Offset.zero;
-                    const curve = Curves.ease;
-
-                    var tween = Tween(begin: begin, end: end).chain(
-                      CurveTween(curve: curve),
-                    );
-
-                    return SlideTransition(
-                      position: animation.drive(tween),
-                      child: child,
-                    );
-                  },
-                  transitionDuration: const Duration(milliseconds: 300),
-                ),
-              );
-            },
-          ),
           const SizedBox(width: 8),
           // 设置按钮
           AnimatedIconButton(

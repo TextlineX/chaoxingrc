@@ -1,5 +1,4 @@
 // API客户端 - 核心网络请求模块
-import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -55,7 +54,8 @@ class ApiClient {
 
     // 添加重试拦截器
     _dio.interceptors.add(RetryInterceptor());
-    debugPrint('ApiClient初始化完成：服务器=$_serverUrl，认证状态=${cookie.isNotEmpty ? "已认证" : "未认证"}');
+    debugPrint(
+        'ApiClient初始化完成：服务器=$_serverUrl，认证状态=${cookie.isNotEmpty ? "已认证" : "未认证"}');
   }
 
   // 更新服务器URL
@@ -117,7 +117,8 @@ class ApiClient {
     }
 
     _dio.options.headers = headers;
-    debugPrint('认证信息已更新：Cookie=${cookie.isNotEmpty ? "已设置" : "未设置"}, BSID=${bsid.isNotEmpty ? "已设置" : "未设置"}');
+    debugPrint(
+        '认证信息已更新：Cookie=${cookie.isNotEmpty ? "已设置" : "未设置"}, BSID=${bsid.isNotEmpty ? "已设置" : "未设置"}');
   }
 
   // 清除认证信息
@@ -145,45 +146,6 @@ class ApiClient {
       'cookie': cookie,
       'bsid': bsid,
     };
-  }
-
-  // 获取文件MIME类型
-  String _getContentType(String fileExtension) {
-    switch (fileExtension) {
-      case 'jpg':
-      case 'jpeg':
-        return 'image/jpeg';
-      case 'png':
-        return 'image/png';
-      case 'gif':
-        return 'image/gif';
-      case 'pdf':
-        return 'application/pdf';
-      case 'doc':
-        return 'application/msword';
-      case 'docx':
-        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      case 'xls':
-        return 'application/vnd.ms-excel';
-      case 'xlsx':
-        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-      case 'ppt':
-        return 'application/vnd.ms-powerpoint';
-      case 'pptx':
-        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
-      case 'txt':
-        return 'text/plain';
-      case 'zip':
-        return 'application/zip';
-      case 'rar':
-        return 'application/x-rar-compressed';
-      case 'mp4':
-        return 'video/mp4';
-      case 'mp3':
-        return 'audio/mpeg';
-      default:
-        return 'application/octet-stream';
-    }
   }
 
   // 简单的网络诊断工具
@@ -221,7 +183,8 @@ class ApiClient {
         final port = uri.port;
 
         // 尝试连接服务器
-        final socket = await Socket.connect(host, port, timeout: const Duration(seconds: 5));
+        final socket = await Socket.connect(host, port,
+            timeout: const Duration(seconds: 5));
         socket.destroy();
 
         // 测试API端点
@@ -323,19 +286,22 @@ class ApiClient {
           contentType = 'application/msword';
           break;
         case 'docx':
-          contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+          contentType =
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
           break;
         case 'xls':
           contentType = 'application/vnd.ms-excel';
           break;
         case 'xlsx':
-          contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+          contentType =
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
           break;
         case 'ppt':
           contentType = 'application/vnd.ms-powerpoint';
           break;
         case 'pptx':
-          contentType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+          contentType =
+              'application/vnd.openxmlformats-officedocument.presentationml.presentation';
           break;
         case 'txt':
           contentType = 'text/plain';
@@ -364,21 +330,22 @@ class ApiClient {
           contentType: MediaType.parse(contentType), // 设置正确的MIME类型
         ),
         // 将其他参数添加到params字段中
-        if (data != null && data.containsKey('dirId')) 'params': {
-          'dirId': data['dirId'],
-          'originalName': fileName, // 添加原始文件名参数，以便服务器端解码使用
-        },
+        if (data != null && data.containsKey('dirId'))
+          'params': {
+            'dirId': data['dirId'],
+            'originalName': fileName, // 添加原始文件名参数，以便服务器端解码使用
+          },
       });
 
       // 对大文件使用更长的超时时间
-      final timeout = fileSize > 100 * 1024 * 1024 
+      final timeout = fileSize > 100 * 1024 * 1024
           ? const Duration(minutes: 30) // 大于100MB的文件使用30分钟超时
-          : const Duration(minutes: 10);  // 小文件使用10分钟超时
+          : const Duration(minutes: 10); // 小文件使用10分钟超时
 
       debugPrint('设置上传超时时间为: ${timeout.inMinutes}分钟');
 
       final response = await _dio.post(
-        path, 
+        path,
         data: formData,
         options: Options(
           sendTimeout: timeout,
@@ -435,19 +402,22 @@ class ApiClient {
           contentType = 'application/msword';
           break;
         case 'docx':
-          contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+          contentType =
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
           break;
         case 'xls':
           contentType = 'application/vnd.ms-excel';
           break;
         case 'xlsx':
-          contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+          contentType =
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
           break;
         case 'ppt':
           contentType = 'application/vnd.ms-powerpoint';
           break;
         case 'pptx':
-          contentType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+          contentType =
+              'application/vnd.openxmlformats-officedocument.presentationml.presentation';
           break;
         case 'txt':
           contentType = 'text/plain';
@@ -476,16 +446,17 @@ class ApiClient {
           contentType: MediaType.parse(contentType), // 设置正确的MIME类型
         ),
         // 将其他参数添加到params字段中
-        if (data != null && data.containsKey('dirId')) 'params': {
-          'dirId': data['dirId'],
-          'originalName': fileName, // 添加原始文件名参数，以便服务器端解码使用
-        },
+        if (data != null && data.containsKey('dirId'))
+          'params': {
+            'dirId': data['dirId'],
+            'originalName': fileName, // 添加原始文件名参数，以便服务器端解码使用
+          },
       });
 
       // 对大文件使用更长的超时时间
-      final timeout = fileSize > 100 * 1024 * 1024 
+      final timeout = fileSize > 100 * 1024 * 1024
           ? const Duration(minutes: 30) // 大于100MB的文件使用30分钟超时
-          : const Duration(minutes: 15);  // 小文件使用15分钟超时
+          : const Duration(minutes: 15); // 小文件使用15分钟超时
 
       debugPrint('设置上传超时时间为: ${timeout.inMinutes}分钟');
 
@@ -501,7 +472,8 @@ class ApiClient {
           if (onProgress != null && total > 0) {
             final currentProgress = sent / total;
             // 只有进度变化超过0.5%才触发回调，避免过于频繁的更新
-            if ((currentProgress - lastProgress).abs() > 0.005 || currentProgress >= 0.99) {
+            if ((currentProgress - lastProgress).abs() > 0.005 ||
+                currentProgress >= 0.99) {
               // 使用compute在后台线程中处理进度更新，避免UI线程阻塞
               onProgress(currentProgress);
               lastProgress = currentProgress;
@@ -560,36 +532,38 @@ class ApiClient {
 
       // 获取下载路径
       String downloadPath = await DownloadPathService.getDownloadPath();
-      
+
       // 确保目录存在
       if (!await DownloadPathService.pathExists(downloadPath)) {
         await DownloadPathService.createDirectory(downloadPath);
       }
-      
+
       final savePath = '$downloadPath/$fileName';
       debugPrint('文件保存路径: $savePath');
 
       // 下载文件
       debugPrint('开始下载文件...');
-      
+
       // 创建下载选项，添加必要的请求头
       final options = Options(
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
           'Referer': 'https://www.chaoxing.com/',
         },
         followRedirects: true,
         maxRedirects: 5,
       );
-      
-      final response = await _dio.download(
+
+      await _dio.download(
         downloadUrl,
         savePath,
         options: options,
         onReceiveProgress: (int received, int total) {
           if (onProgress != null && total > 0) {
             final progress = received / total;
-            debugPrint('下载进度: ${(progress * 100).toStringAsFixed(1)}% ($received/$total)');
+            debugPrint(
+                '下载进度: ${(progress * 100).toStringAsFixed(1)}% ($received/$total)');
             onProgress(progress);
           } else {
             debugPrint('下载进度: $received bytes (总大小未知)');
@@ -623,7 +597,8 @@ class ApiClient {
 
     final responseData = response.data as Map<String, dynamic>;
 
-    if (responseData.containsKey('success') && responseData['success'] != true) {
+    if (responseData.containsKey('success') &&
+        responseData['success'] != true) {
       throw Exception(responseData['message'] ?? '请求失败');
     }
 

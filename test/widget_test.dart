@@ -6,11 +6,9 @@
 // tree, read text, and verify that the values of widget properties are correct.
 
 import 'package:chaoxingrc/app/app.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
-import 'package:chaoxingrc/main.dart';
 import 'package:chaoxingrc/app/providers/theme_provider.dart';
 import 'package:chaoxingrc/app/providers/user_provider.dart';
 

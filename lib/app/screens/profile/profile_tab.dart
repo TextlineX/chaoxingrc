@@ -1,13 +1,8 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/user_provider.dart';
 import '../../widgets/dynamic_theme_builder.dart';
 import '../about_screen.dart';
-import '../donate_screen.dart';
-import '../server_config_screen.dart';
-import '../edit_profile_screen.dart';
-import '../auth_config_screen.dart';
 
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
@@ -30,8 +25,8 @@ class ProfileTab extends StatelessWidget {
                         radius: 30,
                         backgroundColor: Theme.of(context).colorScheme.primary,
                         child: Text(
-                          userProvider.nickname.isNotEmpty 
-                              ? userProvider.nickname.substring(0, 1)
+                          userProvider.username.isNotEmpty 
+                              ? userProvider.username.substring(0, 1)
                               : 'U',
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.onPrimary,
@@ -45,18 +40,19 @@ class ProfileTab extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              userProvider.nickname,
+                              userProvider.username, // We don't have nickname anymore
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            Text(
-                              '用户名: ${userProvider.username}',
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            if (userProvider.bbsid.isNotEmpty)
+                              Text(
+                                'BBSID: ${userProvider.bbsid}',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       ),
@@ -67,62 +63,10 @@ class ProfileTab extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              // 编辑资料
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.edit),
-                  title: const Text('编辑资料'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const DynamicThemeBuilder(
-                          child: EditProfileScreen(),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              const SizedBox(height: 16),
-
               // 功能入口
               Card(
                 child: Column(
                   children: [
-                    ListTile(
-                      leading: const Icon(Icons.key),
-                      title: const Text('认证配置'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const DynamicThemeBuilder(
-                              child: AuthConfigScreen(),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.favorite),
-                      title: const Text('捐赠'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const DynamicThemeBuilder(
-                              child: DonateScreen(),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const Divider(height: 1),
                     ListTile(
                       leading: const Icon(Icons.info),
                       title: const Text('关于'),
@@ -135,6 +79,34 @@ class ProfileTab extends StatelessWidget {
                             ),
                           ),
                         );
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.logout, color: Colors.red),
+                      title: const Text('退出登录', style: TextStyle(color: Colors.red)),
+                      onTap: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('确认退出'),
+                            content: const Text('确定要退出登录吗？'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('取消'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('退出'),
+                              ),
+                            ],
+                          ),
+                        );
+                        
+                        if (confirm == true) {
+                           await userProvider.logout();
+                        }
                       },
                     ),
                   ],

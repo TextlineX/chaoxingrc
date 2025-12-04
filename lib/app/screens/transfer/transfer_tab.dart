@@ -4,18 +4,18 @@ import 'package:provider/provider.dart';
 import '../../providers/transfer_provider.dart';
 import '../../models/transfer_task.dart';
 import '../../widgets/transfer_task_item.dart';
-import '../../widgets/custom_cloud_icons.dart';
 
 class TransferTab extends StatefulWidget {
   const TransferTab({super.key, this.showTitle = false});
-  
+
   final bool showTitle;
 
   @override
   State<TransferTab> createState() => _TransferTabState();
 }
 
-class _TransferTabState extends State<TransferTab> with SingleTickerProviderStateMixin {
+class _TransferTabState extends State<TransferTab>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -35,7 +35,7 @@ class _TransferTabState extends State<TransferTab> with SingleTickerProviderStat
     // 获取主题颜色
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: widget.showTitle ? const Text('传输列表') : null,
@@ -113,7 +113,7 @@ class _TransferTabState extends State<TransferTab> with SingleTickerProviderStat
     // 获取主题颜色
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
-    
+
     return Consumer<TransferProvider>(
       builder: (context, provider, child) {
         final tasks = type == TransferType.upload
@@ -146,14 +146,16 @@ class _TransferTabState extends State<TransferTab> with SingleTickerProviderStat
                       shape: BoxShape.circle,
                     ),
                     child: type == TransferType.upload
-                      ? CustomCloudUploadIcon(
-                          size: 48,
-                          color: primaryColor,
-                        )
-                      : CustomCloudDownloadIcon(
-                          size: 48,
-                          color: primaryColor,
-                        ),
+                        ? Icon(
+                            Icons.cloud_upload,
+                            size: 48,
+                            color: primaryColor,
+                          )
+                        : Icon(
+                            Icons.cloud_download,
+                            size: 48,
+                            color: primaryColor,
+                          ),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -183,8 +185,7 @@ class _TransferTabState extends State<TransferTab> with SingleTickerProviderStat
 
         return RefreshIndicator(
           onRefresh: () async {
-            // 刷新传输列表
-            provider.notifyListeners();
+            provider.refresh();
           },
           child: ListView.builder(
             itemCount: tasks.length,
@@ -194,6 +195,11 @@ class _TransferTabState extends State<TransferTab> with SingleTickerProviderStat
                 task: task,
                 onCancel: () => provider.cancelTask(task.id),
                 onRetry: () => provider.retryTask(task.id),
+                onOpen: () => provider.openFile(task.id),
+                onDelete: () => provider.deleteTask(task.id),
+                onPause: () => provider.pauseTask(task.id),
+                onResume: () =>
+                    provider.retryTask(task.id), // Reuse retry logic for resume
               );
             },
           ),

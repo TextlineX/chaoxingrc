@@ -1,9 +1,7 @@
 
 // 调试控制页面 - 管理调试输出的开关
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../services/debug_settings_service.dart';
-import '../providers/user_provider.dart';
 
 class DebugControlScreen extends StatefulWidget {
   const DebugControlScreen({super.key});

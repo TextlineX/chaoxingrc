@@ -10,6 +10,7 @@ import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
+import android.webkit.CookieManager
 
 class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -24,6 +25,66 @@ class MainActivity : FlutterActivity() {
                 result.success(true)
             } else {
                 result.notImplemented()
+            }
+        }
+
+        // 添加Cookies获取方法
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.chaoxingrc.app/cookies").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getCookies" -> {
+                    try {
+                        // 全局允许接受Cookie
+                        CookieManager.getInstance().setAcceptCookie(true)
+                    } catch (_: Exception) {}
+                    val url = call.argument<String>("url")
+                    if (url == null) {
+                        result.error("ARG_ERROR", "url is null", null)
+                        return@setMethodCallHandler
+                    }
+                    try {
+                        val cm = CookieManager.getInstance()
+                        val cookies = cm.getCookie(url) ?: ""
+                        result.success(cookies)
+                    } catch (e: Exception) {
+                        result.error("COOKIE_ERROR", e.message, null)
+                    }
+                }
+                "setCookies" -> {
+                    val url = call.argument<String>("url")
+                    val cookies = call.argument<String>("cookies")
+                    if (url != null && cookies != null) {
+                        try {
+                            val cm = CookieManager.getInstance()
+                            cm.setAcceptCookie(true)
+                            // 简单的分号分割处理
+                            val cookieList = cookies.split(";")
+                            for (cookie in cookieList) {
+                                cm.setCookie(url, cookie.trim())
+                            }
+                            cm.flush()
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("COOKIE_ERROR", e.message, null)
+                        }
+                    } else {
+                        result.error("ARG_ERROR", "url or cookies is null", null)
+                    }
+                }
+                "clearCookies" -> {
+                    try {
+                        val cm = CookieManager.getInstance()
+                        // Android WebView 不支持按 URL 清除，只能全部清除
+                        cm.removeAllCookies(null)
+                        cm.flush()
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("COOKIE_ERROR", e.message, null)
+                    }
+                }
+                "isAvailable" -> {
+                    result.success(true)
+                }
+                else -> result.notImplemented()
             }
         }
     }

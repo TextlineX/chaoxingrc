@@ -1,7 +1,3 @@
-// 直接使用core模型
-import '../models/connection_result.dart';
-import '../models/connection_stage.dart';
-
 // 由于core服务被暂时禁用，我们重新定义这些类型
 enum TransferType {
   upload,
@@ -20,12 +16,16 @@ enum TransferStatus {
 class TransferTask {
   final String id;
   final String fileName;
-  final String filePath;
+  final String
+      filePath; // For download, this can be save path. For upload, source path.
   final int totalSize;
-  final String dirId;
+  final String dirId; // Target folder ID for upload
+  final String? fileId; // Source file ID for download
   final TransferType type;
   TransferStatus status;
   double progress;
+  double speed; // Add speed field
+  int downloadedBytes; // Track downloaded bytes for resume
   String? errorMessage;
   DateTime createdAt;
   DateTime? completedAt;
@@ -36,10 +36,13 @@ class TransferTask {
     required this.fileName,
     required this.filePath,
     required this.totalSize,
-    required this.dirId,
+    this.dirId = '-1',
+    this.fileId,
     required this.type,
     this.status = TransferStatus.pending,
     this.progress = 0,
+    this.speed = 0,
+    this.downloadedBytes = 0,
     this.errorMessage,
     required this.createdAt,
     this.completedAt,
@@ -52,12 +55,17 @@ class TransferTask {
     String? filePath,
     int? totalSize,
     String? dirId,
+    String? fileId,
     TransferType? type,
     TransferStatus? status,
     double? progress,
+    double? speed,
+    int? downloadedBytes,
     String? errorMessage,
+    String? error, // Alias for errorMessage
     DateTime? createdAt,
     DateTime? completedAt,
+    DateTime? endTime, // Alias for completedAt
     Map<String, dynamic>? extra,
   }) {
     return TransferTask(
@@ -66,12 +74,15 @@ class TransferTask {
       filePath: filePath ?? this.filePath,
       totalSize: totalSize ?? this.totalSize,
       dirId: dirId ?? this.dirId,
+      fileId: fileId ?? this.fileId,
       type: type ?? this.type,
       status: status ?? this.status,
       progress: progress ?? this.progress,
-      errorMessage: errorMessage ?? this.errorMessage,
+      speed: speed ?? this.speed,
+      downloadedBytes: downloadedBytes ?? this.downloadedBytes,
+      errorMessage: errorMessage ?? error ?? this.errorMessage,
       createdAt: createdAt ?? this.createdAt,
-      completedAt: completedAt ?? this.completedAt,
+      completedAt: completedAt ?? endTime ?? this.completedAt,
       extra: extra ?? this.extra,
     );
   }
@@ -79,8 +90,10 @@ class TransferTask {
   // 格式化文件大小
   String get formattedSize {
     if (totalSize < 1024) return '${totalSize}B';
-    if (totalSize < 1024 * 1024) return '${(totalSize / 1024).toStringAsFixed(1)}KB';
-    if (totalSize < 1024 * 1024 * 1024) return '${(totalSize / (1024 * 1024)).toStringAsFixed(1)}MB';
+    if (totalSize < 1024 * 1024)
+      return '${(totalSize / 1024).toStringAsFixed(1)}KB';
+    if (totalSize < 1024 * 1024 * 1024)
+      return '${(totalSize / (1024 * 1024)).toStringAsFixed(1)}MB';
     return '${(totalSize / (1024 * 1024 * 1024)).toStringAsFixed(1)}GB';
   }
 
@@ -89,7 +102,8 @@ class TransferTask {
     if (completedAt == null) return '进行中';
     final duration = completedAt!.difference(createdAt);
     if (duration.inSeconds < 60) return '${duration.inSeconds}秒';
-    if (duration.inMinutes < 60) return '${duration.inMinutes}分${duration.inSeconds % 60}秒';
+    if (duration.inMinutes < 60)
+      return '${duration.inMinutes}分${duration.inSeconds % 60}秒';
     return '${duration.inHours}小时${duration.inMinutes % 60}分';
   }
 

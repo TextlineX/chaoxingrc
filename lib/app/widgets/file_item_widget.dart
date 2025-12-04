@@ -1,203 +1,191 @@
-// 文件项组件 - 显示文件/文件夹信息
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/file_provider.dart';
 import '../models/file_item.dart';
+import '../utils/file_operations.dart';
 
 class FileItemWidget extends StatefulWidget {
   final FileItem file;
-  final VoidCallback onTap;
-  final VoidCallback? onDelete;
   final bool isSelected;
-  final bool isSelectionMode;
-  final VoidCallback? onToggleSelection;
+  final VoidCallback? onTap;
   final VoidCallback? onLongPress;
-  final int index; // 添加索引用于动画延迟
+  final bool showCheckbox;
 
   const FileItemWidget({
     super.key,
     required this.file,
-    required this.onTap,
-    this.onDelete,
     this.isSelected = false,
-    this.isSelectionMode = false,
-    this.onToggleSelection,
+    this.onTap,
     this.onLongPress,
-    this.index = 0, // 默认值为0
+    this.showCheckbox = true,
   });
 
   @override
   State<FileItemWidget> createState() => _FileItemWidgetState();
 }
 
-class _FileItemWidgetState extends State<FileItemWidget>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-
-    // 淡入动画
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOut,
-    ));
-
-    // 滑入动画
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0.3, 0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
-    ));
-
-    // 根据索引延迟启动动画，创建级联效果
-    Future.delayed(Duration(milliseconds: widget.index * 50), () {
-      if (mounted) {
-        _controller.forward();
-      }
-    });
+class _FileItemWidgetState extends State<FileItemWidget> {
+  
+  // Helper for file size formatting
+  String _formatFileSize(int size) {
+    if (size < 1024) return '$size B';
+    if (size < 1024 * 1024) return '${(size / 1024).toStringAsFixed(1)} KB';
+    if (size < 1024 * 1024 * 1024) return '${(size / 1024 / 1024).toStringAsFixed(1)} MB';
+    return '${(size / 1024 / 1024 / 1024).toStringAsFixed(1)} GB';
   }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  
+  String _formatDate(DateTime date) {
+      return "${date.year}-${date.month.toString().padLeft(2,'0')}-${date.day.toString().padLeft(2,'0')}";
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return FadeTransition(
-          opacity: _fadeAnimation,
-          child: SlideTransition(
-            position: _slideAnimation,
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: widget.isSelected
-                    ? Theme.of(context).colorScheme.primaryContainer
-                    : Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: ListTile(
-      // 左侧图标或复选框
-      leading: widget.isSelectionMode
-          ? Checkbox(
-              value: widget.isSelected,
-              onChanged: (value) => widget.onToggleSelection?.call(),
-              activeColor: Theme.of(context).colorScheme.primary,
-            )
-          : Icon(
-              widget.file.isFolder ? Icons.folder : _getFileIcon(widget.file.type),
-              color: widget.file.isFolder
-                  ? Theme.of(context).colorScheme.primary
-                  : _getFileIconColor(widget.file.type),
+    final provider = context.watch<FileProvider>();
+
+    return GestureDetector(
+      onTap: widget.onTap,
+      onLongPress: widget.onLongPress,
+      child: Container(
+        decoration: BoxDecoration(
+          color: widget.isSelected ? Theme.of(context).colorScheme.primaryContainer : null,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: ListTile(
+          leading: widget.showCheckbox
+              ? Checkbox(
+                  value: widget.isSelected,
+                  onChanged: (value) {
+                    if (value != null) {
+                      provider.toggleFileSelection(widget.file.id);
+                    }
+                  },
+                )
+              : Icon(
+                  _getFileIcon(widget.file.type),
+                  color: _getFileTypeColor(widget.file.type, context),
+                ),
+          title: Text(
+            widget.file.name,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
             ),
-      // 文件名
-      title: Text(
-        widget.file.name,
-        style: const TextStyle(fontWeight: FontWeight.w500),
-      ),
-      // 文件信息
-      subtitle: Text(
-        '${widget.file.formattedTime} • ${widget.file.formattedSize}',
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!widget.file.isFolder)
+                Text(
+                  _formatFileSize(widget.file.size),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.only(top: 2.0),
+                child: Text(
+                  '上传时间: ${_formatDate(widget.file.uploadTime)}',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          trailing: widget.showCheckbox
+              ? null
+              : PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert),
+                  itemBuilder: (context) => [
+                    PopupMenuItem<String>(
+                      value: 'info',
+                      child: Row(
+                        children: const [
+                          Icon(Icons.info_outline, size: 16),
+                          SizedBox(width: 8),
+                          Text('属性'),
+                        ],
+                      ),
+                    ),
+                    if (!widget.file.isFolder)
+                    PopupMenuItem<String>(
+                      value: 'download',
+                      child: Row(
+                        children: const [
+                          Icon(Icons.download, size: 16),
+                          SizedBox(width: 8),
+                          Text('下载 (未实现)'),
+                        ],
+                      ),
+                    ),
+                  ],
+                  onSelected: (String value) {
+                    switch (value) {
+                      case 'info':
+                        FileOperations.showFileInfo(context, widget.file);
+                        break;
+                      case 'download':
+                         ScaffoldMessenger.of(context).showSnackBar(
+                             const SnackBar(content: Text('下载功能暂未实现'))
+                         );
+                        break;
+                    }
+                  },
+                ),
         ),
       ),
-      // 右侧删除按钮（非选择模式时显示）
-      trailing: !widget.isSelectionMode && widget.onDelete != null
-          ? IconButton(
-              icon: const Icon(Icons.delete_outline),
-              onPressed: widget.onDelete,
-              tooltip: '删除',
-            )
-          : null,
-      // 交互事件
-      onTap: widget.isSelectionMode
-          ? widget.onToggleSelection
-          : widget.onTap,
-      onLongPress: widget.onLongPress,
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 
-  // 根据文件类型获取对应图标
-  IconData _getFileIcon(String type) {
-    switch (type.toLowerCase()) {
-      case 'pdf': return Icons.picture_as_pdf;
-      case 'doc':
-      case 'docx': return Icons.description;
-      case 'xls':
-      case 'xlsx': return Icons.table_chart;
-      case 'ppt':
-      case 'pptx': return Icons.slideshow;
-      case 'txt': return Icons.text_snippet;
+  IconData _getFileIcon(String fileType) {
+    if (widget.file.isFolder) return Icons.folder;
+    
+    switch (fileType.toLowerCase()) {
+      case 'image':
       case 'jpg':
       case 'jpeg':
       case 'png':
-      case 'gif': return Icons.image;
+      case 'gif':
+      case 'webp':
+        return Icons.image;
+      case 'pdf':
+        return Icons.picture_as_pdf;
+      case 'word':
+      case 'doc':
+      case 'docx':
+        return Icons.description;
+      case 'excel':
+      case 'xlsx':
+      case 'csv':
+        return Icons.table_chart;
+      case 'powerpoint':
+      case 'pptx':
+        return Icons.slideshow;
+      case 'text':
+      case 'txt':
+      case 'md':
+        return Icons.text_snippet;
+      case 'video':
       case 'mp4':
       case 'avi':
-      case 'mkv': return Icons.video_file;
+        return Icons.movie;
+      case 'audio':
       case 'mp3':
       case 'wav':
-      case 'flac': return Icons.audio_file;
+        return Icons.audiotrack;
       case 'zip':
       case 'rar':
-      case '7z': return Icons.archive;
-      default: return Icons.insert_drive_file;
+      case '7z':
+        return Icons.folder_zip;
+      default:
+        return Icons.insert_drive_file;
     }
   }
 
-  // 根据文件类型获取图标颜色
-  Color _getFileIconColor(String type) {
-    switch (type.toLowerCase()) {
-      case 'pdf': return Colors.red;
-      case 'doc':
-      case 'docx': return Colors.blue;
-      case 'xls':
-      case 'xlsx': return Colors.green;
-      case 'ppt':
-      case 'pptx': return Colors.orange;
-      case 'txt': return Colors.grey;
-      case 'jpg':
-      case 'jpeg':
-      case 'png':
-      case 'gif': return Colors.purple;
-      case 'mp4':
-      case 'avi':
-      case 'mkv': return Colors.indigo;
-      case 'mp3':
-      case 'wav':
-      case 'flac': return Colors.pink;
-      case 'zip':
-      case 'rar':
-      case '7z': return Colors.brown;
-      default: return Colors.grey;
-    }
+  Color _getFileTypeColor(String fileType, BuildContext context) {
+      if (widget.file.isFolder) return Colors.amber;
+      return Theme.of(context).colorScheme.primary;
   }
 }

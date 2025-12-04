@@ -13,26 +13,27 @@ class GlobalProviders {
   static Future<void> init() async {
     debugPrint('开始初始化全局提供者...');
 
-    // 先初始化 UserProvider，确保其他 Provider 可以获取到用户信息
-    await userProvider.init(notify: false);
+    try {
+      // 先初始化 UserProvider
+      await userProvider.init(notify: false);
+      debugPrint('UserProvider 初始化完成');
 
-    await Future.wait([
-      transferProvider.init(notify: false, context: null),
-      fileProvider.init(null, notify: false),
-    ]);
+      // 并行初始化其他 Provider
+      await Future.wait([
+        transferProvider.init(notify: false, context: null),
+        fileProvider.init(null, notify: false),
+      ]);
+      debugPrint('TransferProvider 和 FileProvider 初始化完成');
 
-    // 重新初始化 FileProvider，确保能够获取到 UserProvider 的登录模式
-    await fileProvider.init(null, notify: false);
+      // 设置Provider之间的关系
+      transferProvider.setFileProvider(fileProvider);
 
-    // 确保 FileApiService 使用正确的登录模式
-    await fileProvider.updateLoginMode(userProvider.loginMode);
-
-    // 设置Provider之间的关系
-    transferProvider.setFileProvider(fileProvider);
-
-    debugPrint('全局提供者初始化完成');
-    debugPrint('UserProvider 开发者模式状态: ${userProvider.isDeveloperMode}');
-    debugPrint('UserProvider 登录状态: ${userProvider.isLoggedIn}');
-    debugPrint('UserProvider 登录模式: ${userProvider.loginMode}');
+      debugPrint('全局提供者初始化完成');
+      debugPrint('UserProvider 登录状态: ${userProvider.isLoggedIn}');
+    } catch (e, stackTrace) {
+      debugPrint('全局提供者初始化失败: $e');
+      debugPrint('堆栈跟踪: $stackTrace');
+      rethrow; // 重新抛出异常，让上层处理
+    }
   }
 }

@@ -17,11 +17,15 @@ class FilesAppBar extends StatelessWidget {
       builder: (context, provider, child) {
         return SafeArea(
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             decoration: BoxDecoration(
               color: provider.isSelectionMode
-                ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3)
-                : null,
+                  ? Theme.of(context)
+                      .colorScheme
+                      .primaryContainer
+                      .withValues(alpha: 0.3)
+                  : null,
               borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(12),
                 bottomRight: Radius.circular(12),
@@ -32,24 +36,28 @@ class FilesAppBar extends StatelessWidget {
                 Expanded(
                   child: Text(
                     provider.isSelectionMode
-                      ? '已选择项'
-                      : provider.pathHistory.length > 1
-                        ? '文件列表'
-                        : '根目录',
+                        ? '已选择项'
+                        : provider.pathHistory.length > 1
+                            ? '文件列表'
+                            : '根目录',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w500,
                       color: provider.isSelectionMode
-                        ? Theme.of(context).colorScheme.onPrimaryContainer
-                        : null,
+                          ? Theme.of(context).colorScheme.onPrimaryContainer
+                          : null,
                     ),
                   ),
                 ),
                 if (provider.isSelectionMode)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -77,25 +85,31 @@ class FilesAppBar extends StatelessWidget {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.select_all),
-                        onPressed: () => provider.selectAllFiles(),
+                        onPressed: () => provider.selectAll(),
                         tooltip: '全选',
                       ),
                       IconButton(
                         icon: const Icon(Icons.drive_file_move),
-                        onPressed: provider.selectedCount > 0 ? () {
-                          if (provider.selectedCount > 0) {
-                            FileOperations.handleBatchMove(context, provider);
-                          }
-                        } : null,
+                        onPressed: provider.selectedCount > 0
+                            ? () {
+                                if (provider.selectedCount > 0) {
+                                  FileOperations.handleBatchMove(
+                                      context, provider);
+                                }
+                              }
+                            : null,
                         tooltip: '移动选中项',
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete),
-                        onPressed: provider.selectedCount > 0 ? () {
-                          if (provider.selectedCount > 0) {
-                            FileOperations.handleBatchDelete(context, provider);
-                          }
-                        } : null,
+                        onPressed: provider.selectedCount > 0
+                            ? () {
+                                if (provider.selectedCount > 0) {
+                                  FileOperations.handleBatchDelete(
+                                      context, provider);
+                                }
+                              }
+                            : null,
                         tooltip: '删除选中项',
                       ),
                       Container(
@@ -116,7 +130,9 @@ class FilesAppBar extends StatelessWidget {
                 else
                   IconButton(
                     icon: const Icon(Icons.refresh),
-                    onPressed: onRefresh ?? () => provider.loadFiles(folderId: provider.currentFolderId),
+                    onPressed: onRefresh ??
+                        () => provider.loadFiles(
+                            folderId: provider.currentFolderId),
                     tooltip: '刷新',
                   ),
               ],

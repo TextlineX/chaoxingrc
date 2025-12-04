@@ -12,7 +12,6 @@ class NetworkRequestDetailDialog extends StatelessWidget {
     // 获取请求信息
     final status = request['status'] as String;
     final statusCode = request['statusCode'];
-    final duration = request['duration'] as int;
     final method = request['method'] as String;
     final url = request['url'] as String;
     final timestamp = request['timestamp'] as String;

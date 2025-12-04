@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../utils/network_monitor.dart';
-import 'api_client.dart';
 
 /// 全局网络拦截器管理器
 class GlobalNetworkInterceptor {

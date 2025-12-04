@@ -12,6 +12,11 @@ class DownloadPathService {
     return prefs.getString(_downloadPathKey) ?? _systemDownloadPath;
   }
 
+  // 设置下载路径 - 兼容性别名
+  static Future<void> saveDownloadPath(String path) async {
+    await setDownloadPath(path);
+  }
+
   // 设置下载路径
   static Future<void> setDownloadPath(String path) async {
     final prefs = await SharedPreferences.getInstance();

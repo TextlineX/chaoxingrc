@@ -6,7 +6,8 @@ import 'providers/user_provider.dart';
 import 'routes/app_routes.dart';
 import 'themes/app_theme.dart';
 import 'screens/home_screen.dart';
-import 'screens/login_screen.dart';
+import 'screens/splash_screen.dart';
+import 'screens/webview_login_screen.dart';
 import 'widgets/dynamic_theme_builder.dart';
 import 'widgets/debug_panel.dart';
 
@@ -33,10 +34,11 @@ class App extends StatelessWidget {
           home: Stack(
             children: [
               DynamicThemeBuilder(
-                child: userProvider.isLoggedIn ? const HomeScreen() : const LoginScreen(),
+                child: _getMainScreen(userProvider),
               ),
               // 只要开启开发者模式就显示调试面板，无论哪种登录模式
-              if (userProvider.isDeveloperMode) const DebugPanel(),
+              if (userProvider.isDeveloperMode && userProvider.isInitialized)
+                const DebugPanel(),
             ],
           ),
           routes: AppRoutes.routes,
@@ -44,5 +46,19 @@ class App extends StatelessWidget {
         );
       },
     );
+  }
+
+  Widget _getMainScreen(UserProvider userProvider) {
+    // 如果UserProvider还没有初始化完成，显示启动画面
+    if (!userProvider.isInitialized) {
+      return const SplashScreen();
+    }
+
+    // 未登录时跳转到网页登录页
+    if (!userProvider.isLoggedIn) {
+      return const WebViewLoginScreen();
+    }
+
+    return const HomeScreen();
   }
 }
