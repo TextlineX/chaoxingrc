@@ -3,12 +3,12 @@ name: CI/CD
 on:
   # 代码推送或合并 PR 时触发构建测试 (CI)
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "beta" ]
     paths-ignore:
       - '**.md'
       - 'docs/**'
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "beta" ]
   
   # 手动触发发布流程 (CD)
   workflow_dispatch:
@@ -61,9 +61,14 @@ jobs:
       - name: Build Artifacts
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         run: |
-          flutter build apk --flavor beta --release
-          flutter build apk --flavor prod --release
-          flutter build appbundle --flavor prod --release
+          if [[ "${{ github.ref_name }}" == "beta" ]]; then
+            echo "Building Beta Flavor..."
+            flutter build apk --flavor beta --release
+          else
+            echo "Building Production Flavor..."
+            flutter build apk --flavor prod --release
+            flutter build appbundle --flavor prod --release
+          fi
           
       - name: Upload APKs
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
@@ -73,13 +78,15 @@ jobs:
           path: |
             build/app/outputs/flutter-apk/app-beta-release.apk
             build/app/outputs/flutter-apk/app-prod-release.apk
+          if-no-files-found: ignore
           
       - name: Upload AAB
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        if: (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && github.ref_name != 'beta'
         uses: actions/upload-artifact@v4
         with:
           name: release-aab
           path: build/app/outputs/bundle/prodRelease/app-prod-release.aab
+          if-no-files-found: ignore
 
   # 发布任务：手动触发或 Push 到主分支时运行
   release:
@@ -129,6 +136,7 @@ jobs:
           
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
+        if: github.ref_name == 'master' || github.ref_name == 'main'
         with:
           tag_name: v${{ steps.update_version.outputs.version }}
           name: Release v${{ steps.update_version.outputs.version }}
@@ -138,15 +146,34 @@ jobs:
             ${{ inputs.release_notes }}
             
             ### 📦 Downloads
-            - `app-beta-release.apk`: Beta Version (Test)
             - `app-prod-release.apk`: Production Version
             - `app-prod-release.aab`: Production App Bundle (for Play Store)
             
             ---
             *Automated build by GitHub Actions*
           files: |
-            artifacts/release-apks/app-beta-release.apk
             artifacts/release-apks/app-prod-release.apk
             artifacts/release-aab/app-prod-release.aab
           draft: false
           prerelease: false
+
+      - name: Create GitHub Beta Release
+        uses: softprops/action-gh-release@v1
+        if: github.ref_name == 'beta'
+        with:
+          tag_name: v${{ steps.update_version.outputs.version }}-beta
+          name: Beta Release v${{ steps.update_version.outputs.version }}
+          body: |
+            ## 🧪 New Beta Release v${{ steps.update_version.outputs.version }}
+            
+            ${{ inputs.release_notes }}
+            
+            ### 📦 Downloads
+            - `app-beta-release.apk`: Beta Version (Test)
+            
+            ---
+            *Automated build by GitHub Actions*
+          files: |
+            artifacts/release-apks/app-beta-release.apk
+          draft: false
+          prerelease: true
