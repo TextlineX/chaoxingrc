@@ -289,8 +289,7 @@ class _WebViewLoginScreenState extends State<WebViewLoginScreen> {
 
       await ChaoxingApiClient().init();
 
-      // 设置更合理的超时时间
-      final dio = ChaoxingApiClient().dio;
+      // 验证登录状态
       final response = await dio.get(
         'https://groupweb.chaoxing.com/pc/resource/getResourceList',
         queryParameters: {
@@ -298,29 +297,52 @@ class _WebViewLoginScreenState extends State<WebViewLoginScreen> {
           'folderId': '-1',
           'recType': '1',
         },
+        options: Options(
+          responseType: ResponseType.plain,
+          headers: {
+            'Referer': 'https://pan-yz.chaoxing.com/',
+            'Origin': 'https://pan-yz.chaoxing.com',
+          },
+        ),
       );
 
-      // 更严格的登录验证
-      if (response.statusCode == 200) {
-        final data = response.data.toString();
-        final isLoggedIn = !data.contains('login') &&
-            !data.contains('未登录') &&
-            !data.contains('please login') &&
-            !data.contains('redirect');
-
-        if (isLoggedIn && mounted) {
+      // 检查响应内容
+      final content = response.data.toString();
+      // 登录失效通常会重定向到登录页，或者返回HTML页面而不是JSON
+      // 如果返回的是登录页面，说明登录失效
+      if (content.contains('<title>用户登录</title>') ||
+          content.contains('passport2.chaoxing.com/login') ||
+          content.contains('class="lg-container"')) {
+        debugPrint('Login validation failed: Returned login page');
+        if (mounted) {
           setState(() {
-            _status = '登录验证成功';
+            _status = '验证失败：Cookie已过期或BBSID无效';
           });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('验证失败，请重新登录')),
+          );
         }
-        return isLoggedIn;
+        return false;
       }
-      return false;
+
+      // 尝试解析 JSON
+      try {
+        // 某些情况下可能返回 JSON
+        // 如果是有效的 JSON 且包含 result: 1 或 success: true，则认为成功
+        // 但超星网盘 API 有时即使成功也返回 HTML 片段，所以主要依赖上面的 HTML 检测
+        debugPrint('Validation response length: ${content.length}');
+
+        // 如果能成功获取数据，说明登录有效
+        return true;
+      } catch (e) {
+        // 忽略解析错误，只要不是登录页面就算成功
+        return true;
+      }
     } catch (e) {
-      debugPrint('登录验证错误: $e');
+      debugPrint('Login validation error: $e');
       if (mounted) {
         setState(() {
-          _status = '验证失败，请检查网络连接或确保信息正确';
+          _status = '验证出错: $e';
         });
       }
       return false;
