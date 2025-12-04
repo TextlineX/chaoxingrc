@@ -30,19 +30,19 @@ android {
         versionName = flutter.versionName
     }
 
-    // flavorDimensions += "env"
+    flavorDimensions += "env"
 
-    // productFlavors {
-    //     create("beta") {
-    //         dimension = "env"
-    //         applicationIdSuffix = ".beta"
-    //         resValue("string", "app_name", "超星网盘(测试)")
-    //     }
-    //     create("prod") {
-    //         dimension = "env"
-    //         resValue("string", "app_name", "超星网盘")
-    //     }
-    // }
+    productFlavors {
+        create("beta") {
+            dimension = "env"
+            applicationIdSuffix = ".beta"
+            resValue("string", "app_name", "超星网盘(测试)")
+        }
+        create("prod") {
+            dimension = "env"
+            resValue("string", "app_name", "超星网盘")
+        }
+    }
 
     buildTypes {
         release {
