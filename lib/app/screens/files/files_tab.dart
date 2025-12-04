@@ -41,13 +41,19 @@ class _FilesTabState extends State<FilesTab> {
       // 确保在初始化之前等待一帧，避免在build期间调用
       await Future.delayed(Duration.zero);
 
-      if (!context.mounted) return;
+      if (!mounted) return;
       // 初始化 FileProvider
-      await _fileProvider.init(context);
+      // 使用 context.mounted 检查是否安全使用 context
+      if (context.mounted) {
+        await _fileProvider.init(context);
+      } else {
+        return;
+      }
 
-      if (!context.mounted) return;
       // 初始化完成后加载文件
-      await _fileProvider.loadFiles();
+      if (context.mounted) {
+        await _fileProvider.loadFiles();
+      }
     } catch (e) {
       debugPrint('FileProvider 初始化失败: $e');
     }
