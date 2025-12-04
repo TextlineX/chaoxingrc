@@ -51,7 +51,7 @@ class _DebugControlScreenState extends State<DebugControlScreen> {
                       ElevatedButton.icon(
                         onPressed: () async {
                           await _debugSettings.enableAll();
-                          if (!mounted) return;
+                          if (!context.mounted) return;
                           setState(() {});
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('已启用所有调试输出')),
@@ -63,7 +63,7 @@ class _DebugControlScreenState extends State<DebugControlScreen> {
                       ElevatedButton.icon(
                         onPressed: () async {
                           await _debugSettings.disableAll();
-                          if (!mounted) return;
+                          if (!context.mounted) return;
                           setState(() {});
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('已禁用所有调试输出')),
