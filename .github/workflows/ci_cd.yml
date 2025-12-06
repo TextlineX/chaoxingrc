@@ -114,11 +114,44 @@ jobs:
           if [ -z "$INCREMENT_TYPE" ]; then
             INCREMENT_TYPE="build"
           fi
-          
-          python version_manager.py $INCREMENT_TYPE
-          
+
+          # 读取当前版本配置
+          MAJOR=$(jq -r '.version.major' version_config.json)
+          MINOR=$(jq -r '.version.minor' version_config.json)
+          PATCH=$(jq -r '.version.patch' version_config.json)
+          BUILD=$(jq -r '.version.build' version_config.json)
+
+          # 根据升级类型更新版本号
+          case "$INCREMENT_TYPE" in
+            "major")
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              BUILD=0
+              ;;
+            "minor")
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              BUILD=0
+              ;;
+            "patch")
+              PATCH=$((PATCH + 1))
+              BUILD=0
+              ;;
+            "build")
+              BUILD=$((BUILD + 1))
+              ;;
+          esac
+
+          # 更新版本配置文件
+          jq --arg major "$MAJOR" --arg minor "$MINOR" --arg patch "$PATCH" --arg build "$BUILD" '.version.major = ($major | tonumber) | .version.minor = ($minor | tonumber) | .version.patch = ($patch | tonumber) | .version.build = ($build | tonumber) | .last_updated = (now | tostring)' version_config.json > version_config.json.tmp
+          mv version_config.json.tmp version_config.json
+
+          # 更新 pubspec.yaml
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH+$BUILD"
+          sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
+
           # 获取新版本号
-          NEW_VERSION=$(python -c "import json; print(json.load(open('version_config.json'))['version_string'])" 2>/dev/null || grep 'version:' pubspec.yaml | awk '{print $2}')
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
           
       - name: Commit & Push Version
