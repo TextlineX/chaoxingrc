@@ -25,7 +25,7 @@ class FilesList extends StatelessWidget {
         if (fileProvider.error != null) {
           final err = fileProvider.error!;
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            // 未登录或认证失败时跳转到网页登录
+            // 未登录或认证失败时跳转到登录页
             if (err.contains('未登录') ||
                 err.contains('认证失败') ||
                 err.contains('登录')) {

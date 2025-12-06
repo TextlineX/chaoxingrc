@@ -8,6 +8,7 @@ enum TransferStatus {
   pending,
   uploading,
   downloading,
+  paused,
   completed,
   failed,
   cancelled;

@@ -85,6 +85,15 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // 手动确认登录状态（用于在外部完成登录逻辑后更新状态）
+  Future<void> confirmLogin(String username, String bbsid) async {
+    _isLoggedIn = true;
+    _username = username;
+    await setBbsid(bbsid); // setBbsid 已经包含了 notifyListeners，但为了保险起见，下面再次调用也没关系
+    // 确保 setBbsid 完成后，状态是一致的
+    notifyListeners();
+  }
+
   void toggleDeveloperMode() {
     _isDeveloperMode = !_isDeveloperMode;
     notifyListeners();

@@ -37,6 +37,7 @@ class _TransferTabState extends State<TransferTab>
     final primaryColor = theme.colorScheme.primary;
 
     return Scaffold(
+      primary: false, // 嵌套在 HomeScreen 中，不需要处理顶部状态栏区域
       appBar: AppBar(
         title: widget.showTitle ? const Text('传输列表') : null,
         centerTitle: true,
@@ -65,8 +66,8 @@ class _TransferTabState extends State<TransferTab>
           labelColor: Colors.white,
           unselectedLabelColor: primaryColor,
           tabs: const [
-            Tab(text: '上传任务'),
             Tab(text: '下载任务'),
+            Tab(text: '上传任务'),
           ],
         ),
         actions: [
@@ -102,8 +103,8 @@ class _TransferTabState extends State<TransferTab>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildTransferList(TransferType.upload),
           _buildTransferList(TransferType.download),
+          _buildTransferList(TransferType.upload),
         ],
       ),
     );
@@ -196,10 +197,31 @@ class _TransferTabState extends State<TransferTab>
                 onCancel: () => provider.cancelTask(task.id),
                 onRetry: () => provider.retryTask(task.id),
                 onOpen: () => provider.openFile(task.id),
-                onDelete: () => provider.deleteTask(task.id),
+                onDelete: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('确认删除'),
+                      content: Text('确定要删除任务 "${task.fileName}" 吗？'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('取消'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            provider.deleteTask(task.id);
+                            Navigator.pop(context);
+                          },
+                          child: const Text('删除',
+                              style: TextStyle(color: Colors.red)),
+                        ),
+                      ],
+                    ),
+                  );
+                },
                 onPause: () => provider.pauseTask(task.id),
-                onResume: () =>
-                    provider.retryTask(task.id), // Reuse retry logic for resume
+                onResume: () => provider.resumeTask(task.id),
               );
             },
           ),

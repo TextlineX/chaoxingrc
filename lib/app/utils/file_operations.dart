@@ -354,8 +354,57 @@ class FileOperations {
 
   // Batch move handler (Stub)
   static void handleBatchMove(BuildContext context, FileProvider provider) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('批量移动功能暂未实现')),
+    final selectedIds = provider.selectedFileIds;
+    final items =
+        provider.files.where((f) => selectedIds.contains(f.id)).toList();
+    final folders = provider.files.where((f) => f.isFolder).toList();
+    if (items.isEmpty || folders.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请选择文件，并确保当前目录有可用目标文件夹')),
+      );
+      return;
+    }
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('选择目标文件夹'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: folders.length,
+            itemBuilder: (context, index) {
+              final folder = folders[index];
+              return ListTile(
+                leading: const Icon(Icons.folder),
+                title: Text(folder.name),
+                onTap: () async {
+                  Navigator.pop(context);
+                  int success = 0;
+                  for (final it in items) {
+                    if (await provider.moveFile(
+                        it.id, folder.id, it.isFolder)) {
+                      success++;
+                    }
+                  }
+                  if (provider.isSelectionMode) {
+                    provider.toggleSelectionMode();
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('成功移动 $success 个项目')),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+        ],
+      ),
     );
   }
 

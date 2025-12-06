@@ -54,7 +54,7 @@ class App extends StatelessWidget {
       return const SplashScreen();
     }
 
-    // 未登录时跳转到网页登录页
+    // 未登录时跳转到登录页
     if (!userProvider.isLoggedIn) {
       return const LoginScreen();
     }

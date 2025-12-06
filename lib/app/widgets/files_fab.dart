@@ -78,7 +78,7 @@ class _FilesFloatingActionButtonState extends State<FilesFloatingActionButton>
   @override
   Widget build(BuildContext context) {
     // 使用更大的底部边距，确保浮动按钮完全显示在导航栏上方
-    final bottomPadding = 100.0;
+    final bottomPadding = 0.0;
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
     final onPrimaryColor = theme.colorScheme.onPrimary;

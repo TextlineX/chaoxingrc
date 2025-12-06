@@ -9,13 +9,14 @@ class AppTheme {
     );
 
     return ThemeData(
-      useMaterial3: false,
+      useMaterial3: true,
       colorScheme: colorScheme,
       appBarTheme: AppBarTheme(
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
         elevation: 0,
         centerTitle: true,
+        scrolledUnderElevation: 0, // Material 3 特性：防止滚动时变色
         titleTextStyle: TextStyle(
           color: colorScheme.onSurface,
           fontSize: 20,
@@ -62,13 +63,14 @@ class AppTheme {
     );
 
     return ThemeData(
-      useMaterial3: false,
+      useMaterial3: true,
       colorScheme: colorScheme,
       appBarTheme: AppBarTheme(
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
         elevation: 0,
         centerTitle: true,
+        scrolledUnderElevation: 0, // Material 3 特性：防止滚动时变色
         titleTextStyle: TextStyle(
           color: colorScheme.onSurface,
           fontSize: 20,

@@ -1,5 +1,6 @@
 // 下载路径服务
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
 class DownloadPathService {
@@ -9,7 +10,11 @@ class DownloadPathService {
   // 获取下载路径
   static Future<String> getDownloadPath() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_downloadPathKey) ?? _systemDownloadPath;
+    final stored = prefs.getString(_downloadPathKey);
+    if (stored != null && stored.isNotEmpty) {
+      return stored;
+    }
+    return await getDefaultPath();
   }
 
   // 设置下载路径 - 兼容性别名
@@ -25,6 +30,20 @@ class DownloadPathService {
 
   // 获取系统下载路径
   static String get systemDownloadPath => _systemDownloadPath;
+
+  static Future<String> getDefaultPath() async {
+    try {
+      if (Platform.isAndroid) {
+        final dir = await getExternalStorageDirectory();
+        final base = dir?.path ?? '/storage/emulated/0/Android/data';
+        return '$base/Download';
+      }
+      final dir = await getApplicationDocumentsDirectory();
+      return dir.path;
+    } catch (_) {
+      return _systemDownloadPath;
+    }
+  }
 
   // 检查路径是否存在
   static Future<bool> pathExists(String path) async {

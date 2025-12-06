@@ -128,26 +128,18 @@ class _HomeScreenState extends State<HomeScreen>
           );
         },
       ),
-      extendBody: true, // 允许主体延伸到手势导航栏区域
-      bottomNavigationBar: Container( // 👈 关键修改：用Container包裹
-        color: Colors.transparent, // 👈 关键修改：Container背景色设置为透明
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).padding.bottom, // 👈 关键修改：添加底部手势栏的安全区域填充
-        ),
-        child: Builder(
-          builder: (context) => BottomNavBar(
-            currentIndex: _currentIndex,
-            onTap: (index) {
-              if (_currentIndex != index) {
-                _animationController.reset();
-                _animationController.forward();
-                setState(() {
-                  _currentIndex = index;
-                });
-              }
-            },
-          ),
-        ),
+      extendBody: false, // 切换回默认模式，让NavigationBar自动处理布局
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          if (_currentIndex != index) {
+            _animationController.reset();
+            _animationController.forward();
+            setState(() {
+              _currentIndex = index;
+            });
+          }
+        },
       ),
     );
   }

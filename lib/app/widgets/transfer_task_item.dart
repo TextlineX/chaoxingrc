@@ -24,6 +24,48 @@ class TransferTaskItem extends StatelessWidget {
     this.onResume,
   });
 
+  Widget _buildStatusText() {
+    String statusText = '';
+    Color statusColor = Colors.grey;
+
+    switch (task.status) {
+      case TransferStatus.pending:
+        statusText = '等待中';
+        break;
+      case TransferStatus.paused:
+        statusText = '已暂停';
+        statusColor = Colors.orange;
+        break;
+      case TransferStatus.uploading:
+        statusText = '上传中';
+        statusColor = Colors.blue;
+        break;
+      case TransferStatus.downloading:
+        statusText = '下载中';
+        statusColor = Colors.blue;
+        break;
+      case TransferStatus.completed:
+        statusText = '已完成';
+        statusColor = Colors.green;
+        break;
+      case TransferStatus.failed:
+        statusText = '失败';
+        statusColor = Colors.red;
+        break;
+      case TransferStatus.cancelled:
+        statusText = '已取消';
+        break;
+    }
+
+    return Text(
+      statusText,
+      style: TextStyle(
+        fontSize: 12,
+        color: statusColor,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListTile(
@@ -32,11 +74,27 @@ class TransferTaskItem extends StatelessWidget {
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          LinearProgressIndicator(value: task.progress),
+          const SizedBox(height: 4),
+          LinearProgressIndicator(
+            value: task.progress,
+            backgroundColor: Colors.grey[200],
+            valueColor: AlwaysStoppedAnimation<Color>(
+              task.status == TransferStatus.paused
+                  ? Colors.orange
+                  : Colors.blue,
+            ),
+          ),
+          const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(task.formattedSize),
+              Row(
+                children: [
+                  _buildStatusText(),
+                  const SizedBox(width: 8),
+                  Text(task.formattedSize),
+                ],
+              ),
               Text(task.progressPercentage),
             ],
           ),
@@ -51,6 +109,7 @@ class TransferTaskItem extends StatelessWidget {
   Widget _buildTrailingIcon(BuildContext context) {
     switch (task.status) {
       case TransferStatus.pending:
+      case TransferStatus.paused:
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -61,7 +120,32 @@ class TransferTaskItem extends StatelessWidget {
             ),
             IconButton(
               icon: const Icon(Icons.delete_outline),
-              onPressed: onDelete,
+              onPressed: () {
+                // 显示删除确认对话框
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('确认删除'),
+                    content: const Text('确定要删除此任务吗？'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('取消'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          if (onDelete != null) {
+                            onDelete!();
+                          }
+                        },
+                        child: const Text('删除',
+                            style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                );
+              },
               tooltip: '删除',
             ),
           ],
@@ -94,7 +178,32 @@ class TransferTaskItem extends StatelessWidget {
             ),
             IconButton(
               icon: const Icon(Icons.delete_outline),
-              onPressed: onDelete,
+              onPressed: () {
+                // 显示删除确认对话框
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('确认删除'),
+                    content: const Text('确定要删除此任务吗？'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('取消'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          if (onDelete != null) {
+                            onDelete!();
+                          }
+                        },
+                        child: const Text('删除',
+                            style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                );
+              },
               tooltip: '删除记录',
             ),
           ],
@@ -111,7 +220,32 @@ class TransferTaskItem extends StatelessWidget {
             ),
             IconButton(
               icon: const Icon(Icons.delete_outline),
-              onPressed: onDelete,
+              onPressed: () {
+                // 显示删除确认对话框
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('确认删除'),
+                    content: const Text('确定要删除此任务吗？'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('取消'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          if (onDelete != null) {
+                            onDelete!();
+                          }
+                        },
+                        child: const Text('删除',
+                            style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                );
+              },
               tooltip: '删除记录',
             ),
           ],

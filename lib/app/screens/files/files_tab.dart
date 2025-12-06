@@ -81,22 +81,23 @@ class _FilesTabState extends State<FilesTab> {
 
   void _showUploadStub() async {
     try {
-      const typeGroup = XTypeGroup(
-        label: 'files',
-        extensions: [],
-      );
-      final XFile? file = await openFile(acceptedTypeGroups: [typeGroup]);
-      if (file == null) return;
-
+      const typeGroup = XTypeGroup(label: 'files', extensions: []);
+      final files = await openFiles(acceptedTypeGroups: [typeGroup]);
+      if (files.isEmpty) return;
+      final transferProvider = context.read<TransferProvider>();
+      for (final f in files) {
+        final size = await f.length();
+        transferProvider.addUploadTask(
+          filePath: f.path,
+          fileName: f.name,
+          fileSize: size,
+          dirId: _fileProvider.currentFolderId,
+        );
+      }
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('准备上传: ${file.name}, 功能开发中...')),
+        SnackBar(content: Text('已添加 ${files.length} 个上传任务')),
       );
-
-      // TODO: Implement actual upload using TransferProvider or DirectUploadService
-      // final transferProvider = context.read<TransferProvider>();
-      // transferProvider.addUploadTask(...)
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -154,17 +155,15 @@ class _FilesTabState extends State<FilesTab> {
       value: _transferProvider,
       child: Scaffold(
         resizeToAvoidBottomInset: false,
-        body: SafeArea(
-          child: Column(
-            children: [
-              FilesAppBar(
-                // <--- 修正：loadFiles 不再需要 context 参数
-                onRefresh: () => _fileProvider.loadFiles(),
-              ),
-              PathNavigator(provider: _fileProvider),
-              Expanded(child: FilesList(provider: _fileProvider)),
-            ],
-          ),
+        body: Column(
+          children: [
+            FilesAppBar(
+              // <--- 修正：loadFiles 不再需要 context 参数
+              onRefresh: () => _fileProvider.loadFiles(),
+            ),
+            PathNavigator(provider: _fileProvider),
+            Expanded(child: FilesList(provider: _fileProvider)),
+          ],
         ),
         floatingActionButton: FilesFloatingActionButton(
           onUpload: _showUploadStub,

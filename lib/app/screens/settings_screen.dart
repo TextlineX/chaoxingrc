@@ -263,21 +263,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                     const Divider(height: 1),
                     ListTile(
-                      title: const Text('通过网页登录'),
-                      subtitle: const Text('兼容验证码/二次校验，自动同步Cookie'),
-                      leading: const Icon(Icons.web),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const LoginScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
                       title: const Text('设置BBSID'),
                       subtitle: Text(
                         userProvider.bbsid.isNotEmpty

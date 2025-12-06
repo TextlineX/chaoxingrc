@@ -134,17 +134,14 @@ Future<void> main() async {
   // 使用边到边模式，让应用内容延伸到系统导航栏区域
   SystemChrome.setEnabledSystemUIMode(
     SystemUiMode.edgeToEdge,
-    overlays: [SystemUiOverlay.top], // 只显示顶部状态栏，不显示底部导航栏
   );
 
-  // 设置状态栏和导航栏样式
+  // 设置状态栏和导航栏样式 - 设为透明以支持沉浸式
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
-      statusBarColor: Colors.blue,
-      statusBarIconBrightness: Brightness.light,
+      statusBarColor: Colors.transparent,
       systemNavigationBarColor: Colors.transparent,
       systemNavigationBarDividerColor: Colors.transparent,
-      systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
 
