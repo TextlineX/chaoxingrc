@@ -84,6 +84,9 @@ class _FilesTabState extends State<FilesTab> {
       const typeGroup = XTypeGroup(label: 'files', extensions: []);
       final files = await openFiles(acceptedTypeGroups: [typeGroup]);
       if (files.isEmpty) return;
+
+      // 在异步操作前获取 context，避免跨异步间隙使用 BuildContext
+      if (!mounted) return;
       final transferProvider = context.read<TransferProvider>();
       for (final f in files) {
         final size = await f.length();

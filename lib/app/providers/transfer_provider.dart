@@ -477,13 +477,13 @@ class TransferProvider extends ChangeNotifier {
     }
 
     // 从内存中删除任务
-    final removedTask = _tasks.firstWhere(
-      (t) => t.id == taskId,
-      orElse: () => null as TransferTask,
-    );
-    
-    _tasks.removeWhere((t) => t.id == taskId);
-    
+    TransferTask? removedTask;
+    final taskIndex = _tasks.indexWhere((t) => t.id == taskId);
+    if (taskIndex != -1) {
+      removedTask = _tasks[taskIndex];
+      _tasks.removeAt(taskIndex);
+    }
+      
     // 直接从数据库中删除任务
     if (_taskBox != null) {
       try {

@@ -390,9 +390,13 @@ class FileOperations {
                   if (provider.isSelectionMode) {
                     provider.toggleSelectionMode();
                   }
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('成功移动 $success 个项目')),
-                  );
+                  // 延迟一小段时间确保 context 有效
+                  await Future.delayed(const Duration(milliseconds: 10));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('成功移动 $success 个项目')),
+                    );
+                  }
                 },
               );
             },

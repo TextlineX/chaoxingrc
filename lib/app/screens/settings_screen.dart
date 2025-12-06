@@ -4,7 +4,6 @@ import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
 import '../services/download_path_service.dart';
 import 'package:file_selector/file_selector.dart';
-import './login_screen.dart';
 import './debug_control_screen.dart';
 
 // 简单的颜色选择器 Dialog
