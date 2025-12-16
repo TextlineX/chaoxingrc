@@ -25,11 +25,26 @@ migrate_working_dir/
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
+.packages
 .pub-cache/
 .pub/
 /build/
 /coverage/
+
+# Android build/cache
+/android/.gradle/
+/android/.cxx/
+/android/build/
+
+# iOS/macOS CocoaPods & ephemeral
+/ios/Pods/
+/ios/.symlinks/
+/ios/Flutter/ephemeral/
+/macos/Pods/
+/macos/.symlinks/
+/macos/Flutter/ephemeral/
 
 # Symbolication related
 app.*.symbols
@@ -44,6 +59,7 @@ app.*.map.json
 
 # Android Secrets & Keys
 /android/local.properties
+/local.properties
 key.properties
 **/*.jks
 **/*.keystore
