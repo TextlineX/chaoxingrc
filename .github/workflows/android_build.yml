@@ -1,212 +1,153 @@
-name: CI/CD
+# 工作流名称
+name: android_build
 
+# 触发条件
 on:
-  # 代码推送或合并 PR 时触发构建测试 (CI)
+  # 当推送代码到 master 或 beta 分支时触发
   push:
-    branches: [ "main", "master", "beta" ]
+    branches: [ "master", "beta" ]
+    # 忽略 Markdown 文件和 docs 目录的变更（避免不必要的构建）
     paths-ignore:
       - '**.md'
       - 'docs/**'
-  pull_request:
-    branches: [ "main", "master", "beta" ]
   
-  # 手动触发发布流程 (CD)
+  # 当向 master 或 beta 分支发起 Pull Request 时触发（用于 CI 检查）
+  pull_request:
+    branches: [ "master", "beta" ]
+  
+  # 支持手动触发工作流（用于特殊情况下的强制发布）
   workflow_dispatch:
     inputs:
-      increment_type:
-        description: 'Version Increment Type (版本升级类型)'
-        required: true
-        default: 'build'
-        type: choice
-        options:
-          - build
-          - patch
-          - minor
-          - major
       release_notes:
-        description: 'Release Notes (发布说明)'
+        description: '发布说明（可选，手动触发时可填写变更内容）'
         required: false
         type: string
 
+# 任务定义
 jobs:
-  # 构建任务：所有触发都会运行
+  # 第一阶段：构建与测试
   build:
-    name: Build & Test
-    runs-on: ubuntu-latest
+    name: Build & Test                # 任务显示名称
+    runs-on: ubuntu-latest            # 运行环境：最新 Ubuntu
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Java
-        uses: actions/setup-java@v3
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Java 环境（Flutter Android 构建必需）
+        uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: 'temurin'     # Eclipse Temurin JDK
           java-version: '17'
-          
-      - name: Set up Flutter
+
+      - name: 配置 Flutter 环境
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
-          cache: true
-          
-      - name: Install dependencies
-        run: flutter pub get
-        
-      - name: Run Analysis
-        run: flutter analyze
-        
-      # - name: Run Tests
-      #   run: flutter test
+          channel: 'stable'           # 使用稳定通道
+          cache: true                 # 启用缓存，加速后续构建
 
-      # 仅在 Release 模式下构建 APK/AAB
-      - name: Build Artifacts
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+      - name: 安装项目依赖
+        run: flutter pub get
+
+      - name: 代码静态分析
+        run: flutter analyze
+
+      - name: 构建安装包
         run: |
+          # 根据当前分支选择构建类型
           if [[ "${{ github.ref_name }}" == "beta" ]]; then
-            echo "Building Beta Flavor..."
+            echo "正在构建 Beta 版本 APK..."
             flutter build apk --flavor beta --release
           else
-            echo "Building Production Flavor..."
+            echo "正在构建正式版本 APK 和 AAB..."
             flutter build apk --flavor prod --release
             flutter build appbundle --flavor prod --release
           fi
-          
-      - name: Upload APKs
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+
+      - name: 上传所有 APK 文件到 Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: release-apks
+          name: apks                    # Artifact 名称，便于后续下载
           path: |
-            build/app/outputs/flutter-apk/app-beta-release.apk
-            build/app/outputs/flutter-apk/app-prod-release.apk
-          if-no-files-found: ignore
-          
-      - name: Upload AAB
-        if: (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && github.ref_name != 'beta'
+            build/app/outputs/flutter-apk/*.apk
+
+      - name: 上传 AAB 文件（仅正式版需要）
+        if: github.ref_name != 'beta'
         uses: actions/upload-artifact@v4
         with:
-          name: release-aab
+          name: aab
           path: build/app/outputs/bundle/prodRelease/app-prod-release.aab
-          if-no-files-found: ignore
 
-  # 发布任务：手动触发或 Push 到主分支时运行
+  # 第二阶段：创建 GitHub Release
   release:
-    name: Create Release
-    needs: build
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    name: Create Release               # 任务显示名称
+    needs: build                       # 依赖 build 任务完成（确保产物已生成）
     runs-on: ubuntu-latest
+    # 触发条件：代码推送 或 手动触发
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     permissions:
-      contents: write
+      contents: write                  # 需要写入权限才能创建 Release 和 Tag
+    
     steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
-          
-      - name: Update Version
-        id: update_version
+      - name: 检出代码（用于读取 pubspec.yaml）
+        uses: actions/checkout@v4
+
+      - name: 获取当前版本号
+        id: version
         run: |
-          # 确定升级类型：如果是手动触发则使用输入值，否则默认为 'build'
-          INCREMENT_TYPE="${{ inputs.increment_type }}"
-          if [ -z "$INCREMENT_TYPE" ]; then
-            INCREMENT_TYPE="build"
-          fi
+          # 从 pubspec.yaml 中提取完整版本（可能包含 +build）
+          FULL_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | xargs)
+          # 去掉 +build 及其后面的内容，只保留 x.y.z 部分（更美观）
+          CLEAN_VERSION=$(echo $FULL_VERSION | sed 's/+.*//')
+          # 输出供后续步骤使用
+          echo "full_version=$FULL_VERSION" >> $GITHUB_OUTPUT
+          echo "clean_version=$CLEAN_VERSION" >> $GITHUB_OUTPUT
+          echo "检测到版本：$CLEAN_VERSION（原始：$FULL_VERSION）"
 
-          # 读取当前版本配置
-          MAJOR=$(jq -r '.version.major' version_config.json)
-          MINOR=$(jq -r '.version.minor' version_config.json)
-          PATCH=$(jq -r '.version.patch' version_config.json)
-          BUILD=$(jq -r '.version.build' version_config.json)
-
-          # 根据升级类型更新版本号
-          case "$INCREMENT_TYPE" in
-            "major")
-              MAJOR=$((MAJOR + 1))
-              MINOR=0
-              PATCH=0
-              BUILD=0
-              ;;
-            "minor")
-              MINOR=$((MINOR + 1))
-              PATCH=0
-              BUILD=0
-              ;;
-            "patch")
-              PATCH=$((PATCH + 1))
-              BUILD=0
-              ;;
-            "build")
-              BUILD=$((BUILD + 1))
-              ;;
-          esac
-
-          # 更新版本配置文件
-          jq --arg major "$MAJOR" --arg minor "$MINOR" --arg patch "$PATCH" --arg build "$BUILD" '.version.major = ($major | tonumber) | .version.minor = ($minor | tonumber) | .version.patch = ($patch | tonumber) | .version.build = ($build | tonumber) | .last_updated = (now | tostring)' version_config.json > version_config.json.tmp
-          mv version_config.json.tmp version_config.json
-
-          # 更新 pubspec.yaml
-          NEW_VERSION="$MAJOR.$MINOR.$PATCH+$BUILD"
-          sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
-
-          # 获取新版本号
-          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          
-      - name: Commit & Push Version
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git add version_config.json pubspec.yaml
-          git commit -m "chore: bump version to ${{ steps.update_version.outputs.version }}"
-          git push
-          
-      - name: Download Artifacts
+      - name: 下载构建产物
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
-          
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        if: github.ref_name == 'master' || github.ref_name == 'main'
+          path: artifacts                # 下载到 artifacts 目录
+
+      - name: 创建正式版 Release（master 分支）
+        if: github.ref_name == 'master'
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.update_version.outputs.version }}
-          name: Release v${{ steps.update_version.outputs.version }}
+          tag_name: v${{ steps.version.outputs.clean_version }}
+          name: Release v${{ steps.version.outputs.clean_version }}
           body: |
-            ## 🚀 New Release v${{ steps.update_version.outputs.version }}
+            ## 🚀 正式版发布 v${{ steps.version.outputs.clean_version }}
             
             ${{ inputs.release_notes }}
             
-            ### 📦 Downloads
-            - `app-prod-release.apk`: Production Version
-            - `app-prod-release.aab`: Production App Bundle (for Play Store)
+            来自 master 分支的自动构建。
             
-            ---
-            *Automated build by GitHub Actions*
+            ### 📦 下载
+            - 正式版 APK
+            - 正式版 AAB（用于上传 Google Play）
           files: |
-            artifacts/release-apks/app-prod-release.apk
-            artifacts/release-aab/app-prod-release.aab
+            artifacts/apks/app-prod-release.apk
+            artifacts/aab/app-prod-release.aab
           draft: false
           prerelease: false
+          fail_on_unmatched_files: false    # 文件未匹配时不报错
 
-      - name: Create GitHub Beta Release
-        uses: softprops/action-gh-release@v1
+      - name: 创建 Beta 版 Release（beta 分支）
         if: github.ref_name == 'beta'
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.update_version.outputs.version }}-beta
-          name: Beta Release v${{ steps.update_version.outputs.version }}
+          tag_name: v${{ steps.version.outputs.clean_version }}-beta
+          name: Beta v${{ steps.version.outputs.clean_version }}
           body: |
-            ## 🧪 New Beta Release v${{ steps.update_version.outputs.version }}
+            ## 🧪 测试版发布 v${{ steps.version.outputs.clean_version }}
             
             ${{ inputs.release_notes }}
             
-            ### 📦 Downloads
-            - `app-beta-release.apk`: Beta Version (Test)
+            来自 beta 分支的自动构建。
             
-            ---
-            *Automated build by GitHub Actions*
+            ### 📦 下载
+            - Beta 版 APK
           files: |
-            artifacts/release-apks/app-beta-release.apk
+            artifacts/apks/app-beta-release.apk
           draft: false
-          prerelease: true
+          prerelease: true                  # 标记为预发布版
+          fail_on_unmatched_files: false
