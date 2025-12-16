@@ -37,10 +37,9 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // !!! 关键：强制所有 release 构建都使用 debug 密钥签名，解决 CI 环境签名问题 !!!
             signingConfig = signingConfigs.getByName("debug")
-            
+
             // 增加内存设置以避免构建时出现OOM
             ndk {
                 abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a"))
@@ -49,13 +48,14 @@ android {
         debug {
             // 调试版本也增加内存
             isDebuggable = true
-            
+
             // 增加内存设置以避免构建时出现OOM
             ndk {
                 abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86_64"))
             }
         }
     }
+
     
     // 增加 dexOptions 以提高构建性能并避免内存问题
     dexOptions {

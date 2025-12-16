@@ -27,8 +27,8 @@ on:
 jobs:
   # 第一阶段：构建与测试
   build:
-    name: Build & Test                # 任务显示名称
-    runs-on: ubuntu-latest            # 运行环境：最新 Ubuntu
+    name: Build & Test
+    runs-on: ubuntu-latest
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
@@ -36,14 +36,14 @@ jobs:
       - name: 配置 Java 环境（Flutter Android 构建必需）
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'     # Eclipse Temurin JDK
+          distribution: 'temurin'
           java-version: '17'
 
       - name: 配置 Flutter 环境
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'           # 使用稳定通道
-          cache: true                 # 启用缓存，加速后续构建
+          channel: 'stable'
+          cache: true
 
       - name: 安装项目依赖
         run: flutter pub get
@@ -57,21 +57,21 @@ jobs:
           # 根据当前分支选择构建类型
           if [[ "${{ github.ref_name }}" == "beta" ]]; then
             echo "正在构建 Beta 版本 APK..."
-            # 使用 --debug-signing 强制使用 debug 密钥签名，解决 CI 环境签名问题
-            flutter build apk --release --debug-signing
+            # 由于 build.gradle.kts 已配置 debug 签名，这里直接构建即可
+            flutter build apk --release
           else
             echo "正在构建正式版本 APK 和 AAB..."
-            # 使用 --debug-signing 强制使用 debug 密钥签名
-            flutter build apk --release --debug-signing
-            flutter build appbundle --release --debug-signing
+            # 直接构建，签名由 build.gradle.kts 处理
+            flutter build apk --release
+            flutter build appbundle --release
           fi
 
       - name: 上传所有 APK 文件到 Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: apks                    # Artifact 名称，便于后续下载
-          path: |
-            build/app/outputs/flutter-apk/*.apk
+          name: apks
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
 
       - name: 上传 AAB 文件（仅正式版需要）
         if: github.ref_name != 'beta'
@@ -79,16 +79,17 @@ jobs:
         with:
           name: aab
           path: build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
 
   # 第二阶段：创建 GitHub Release
   release:
-    name: Create Release               # 任务显示名称
-    needs: build                       # 依赖 build 任务完成（确保产物已生成）
-    runs-on: ubuntu-latest
+    name: Create Release
+    needs: build
     # 触发条件：代码推送 或 手动触发
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
     permissions:
-      contents: write                  # 需要写入权限才能创建 Release 和 Tag
+      contents: write
 
     steps:
       - name: 检出代码（用于读取 pubspec.yaml）
@@ -109,7 +110,7 @@ jobs:
       - name: 下载构建产物
         uses: actions/download-artifact@v4
         with:
-          path: artifacts                # 下载到 artifacts 目录
+          path: artifacts
 
       - name: 创建正式版 Release（master 分支）
         if: github.ref_name == 'master'
@@ -132,7 +133,7 @@ jobs:
             artifacts/aab/app-release.aab
           draft: false
           prerelease: false
-          fail_on_unmatched_files: false    # 文件未匹配时不报错
+          fail_on_unmatched_files: false
 
       - name: 创建 Beta 版 Release（beta 分支）
         if: github.ref_name == 'beta'
@@ -152,5 +153,5 @@ jobs:
           files: |
             artifacts/apks/app-release.apk
           draft: false
-          prerelease: true                  # 标记为预发布版
+          prerelease: true
           fail_on_unmatched_files: false
