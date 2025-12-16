@@ -24,9 +24,6 @@ class App extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: themeProvider.themeMode,
-          // ⚠️ 移除 Builder 中的 MediaQuery 覆盖
-          // 让 Scaffold 和内容组件直接处理正确的系统 Insets。
-          // 布局的底部填充将完全交由 HomeTab.dart 中的 SingleChildScrollView 处理。
           builder: (context, child) {
             return child!;
           },

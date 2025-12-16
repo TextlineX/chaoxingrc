@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
@@ -21,8 +20,8 @@ class DynamicThemeBuilder extends StatelessWidget {
           brightness: Theme.of(context).brightness,
         );
 
-        // 如果启用了动态颜色，则异步获取动态颜色方案
-        if (themeProvider.useDynamicColor) {
+        // 如果启用了动态颜色或有自定义壁纸，则异步获取动态颜色方案
+        if (themeProvider.useDynamicColor || themeProvider.hasCustomWallpaper) {
           // 使用一个FutureBuilder来获取动态颜色，但初始显示使用种子颜色
           return FutureBuilder<ColorScheme>(
             future: themeProvider.getColorScheme(Theme.of(context).brightness),
@@ -34,8 +33,13 @@ class DynamicThemeBuilder extends StatelessWidget {
                 data: ThemeData(
                   useMaterial3: true,
                   colorScheme: finalColorScheme,
+                  scaffoldBackgroundColor: themeProvider.hasCustomWallpaper 
+                      ? Colors.transparent 
+                      : finalColorScheme.primaryContainer, // 如果有自定义壁纸，背景设为透明，否则使用主题色的容器色
                   appBarTheme: AppBarTheme(
-                    backgroundColor: finalColorScheme.surface,
+                    backgroundColor: themeProvider.hasCustomWallpaper 
+                        ? Colors.transparent 
+                        : finalColorScheme.surface,
                     foregroundColor: finalColorScheme.onSurface,
                     elevation: 0,
                     centerTitle: true,
@@ -90,8 +94,13 @@ class DynamicThemeBuilder extends StatelessWidget {
             data: ThemeData(
               useMaterial3: true,
               colorScheme: colorScheme,
+              scaffoldBackgroundColor: themeProvider.hasCustomWallpaper 
+                  ? Colors.transparent 
+                  : colorScheme.primaryContainer, // 如果有自定义壁纸，背景设为透明，否则使用主题色的容器色
               appBarTheme: AppBarTheme(
-                backgroundColor: colorScheme.surface,
+                backgroundColor: themeProvider.hasCustomWallpaper 
+                    ? Colors.transparent 
+                    : colorScheme.surface,
                 foregroundColor: colorScheme.onSurface,
                 elevation: 0,
                 centerTitle: true,

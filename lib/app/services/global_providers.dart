@@ -18,6 +18,12 @@ class GlobalProviders {
       await userProvider.init(notify: false);
       debugPrint('UserProvider 初始化完成');
 
+      // 如果用户已登录，加载用户信息
+      if (userProvider.isLoggedIn) {
+        await userProvider.loadUserInfo();
+        debugPrint('用户信息加载完成');
+      }
+
       // 并行初始化其他 Provider
       await Future.wait([
         transferProvider.init(notify: false, context: null),

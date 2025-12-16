@@ -34,7 +34,6 @@ Future<bool> _validateInitialization() async {
 // 错误显示应用
 class ErrorApp extends StatelessWidget {
   final String error;
-
   const ErrorApp({super.key, required this.error});
 
   @override
@@ -146,6 +145,7 @@ Future<void> main() async {
   );
 
   final themeProvider = ThemeProvider();
+  await themeProvider.init();
 
   // 初始化全局提供者
   await GlobalProviders.init();

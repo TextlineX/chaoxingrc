@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:chaoxingrc/app/services/chaoxing/auth_manager.dart';
+import 'package:chaoxingrc/app/services/chaoxing/user_service.dart';
 
 class UserProvider extends ChangeNotifier {
   final ChaoxingAuthManager _authManager = ChaoxingAuthManager();
+  final ChaoxingUserService _userService = ChaoxingUserService();
 
   bool _isLoggedIn = false;
   String _username = '';
   String _bbsid = '';
+  String _puid = '';
   String _error = '';
   bool _isInitialized = false;
 
@@ -17,6 +20,9 @@ class UserProvider extends ChangeNotifier {
   bool get isLoggedIn => _isLoggedIn;
   String get username => _username;
   String get bbsid => _bbsid;
+  String get puid => _puid;
+  String get avatarUrl => _authManager.avatarUrl ?? '';
+  String get currentCircleLogo => _authManager.currentCircleLogo;
   String get error => _error;
   bool get isDeveloperMode => _isDeveloperMode;
   bool get isInitialized => _isInitialized;
@@ -42,6 +48,31 @@ class UserProvider extends ChangeNotifier {
 
     _isInitialized = true;
     if (notify) notifyListeners();
+  }
+
+  Future<void> loadUserInfo({bool notify = true}) async {
+    try {
+      final info = await _userService.getCurrentUserInfo();
+      if (info == null) {
+        if (notify) notifyListeners();
+        return;
+      }
+
+      final puidValue = info['puid']?.toString() ?? info['uid']?.toString() ?? '';
+      if (puidValue.isNotEmpty) {
+        _puid = puidValue;
+      }
+
+      final nameValue = info['name']?.toString() ?? info['uname']?.toString() ?? '';
+      if (nameValue.isNotEmpty) {
+        _username = nameValue;
+      }
+
+      if (notify) notifyListeners();
+    } catch (e) {
+      debugPrint('UserProvider.loadUserInfo failed: $e');
+      if (notify) notifyListeners();
+    }
   }
 
   Future<bool> login(String username, String password, String bbsid) async {
@@ -71,6 +102,7 @@ class UserProvider extends ChangeNotifier {
     _isLoggedIn = false;
     _username = '';
     _bbsid = '';
+    _puid = '';
     notifyListeners();
   }
 

@@ -69,6 +69,7 @@ class DirectUploadService {
       // 根据扩展名确定MIME类型
       String contentType = 'application/octet-stream'; // 默认类型
       switch (fileExtension) {
+        // 图片类型
         case 'jpg':
         case 'jpeg':
           contentType = 'image/jpeg';
@@ -79,6 +80,20 @@ class DirectUploadService {
         case 'gif':
           contentType = 'image/gif';
           break;
+        case 'bmp':
+          contentType = 'image/bmp';
+          break;
+        case 'webp':
+          contentType = 'image/webp';
+          break;
+        case 'svg':
+          contentType = 'image/svg+xml';
+          break;
+        case 'ico':
+          contentType = 'image/x-icon';
+          break;
+
+        // 文档类型
         case 'pdf':
           contentType = 'application/pdf';
           break;
@@ -103,19 +118,122 @@ class DirectUploadService {
         case 'txt':
           contentType = 'text/plain';
           break;
+        case 'rtf':
+          contentType = 'application/rtf';
+          break;
+        case 'odt':
+          contentType = 'application/vnd.oasis.opendocument.text';
+          break;
+        case 'ods':
+          contentType = 'application/vnd.oasis.opendocument.spreadsheet';
+          break;
+        case 'odp':
+          contentType = 'application/vnd.oasis.opendocument.presentation';
+          break;
+
+        // 压缩文件类型
         case 'zip':
           contentType = 'application/zip';
           break;
         case 'rar':
           contentType = 'application/x-rar-compressed';
           break;
-        case 'mp4':
-          contentType = 'video/mp4';
+        case '7z':
+          contentType = 'application/x-7z-compressed';
           break;
+        case 'tar':
+          contentType = 'application/x-tar';
+          break;
+        case 'gz':
+          contentType = 'application/gzip';
+          break;
+
+        // 音频类型
         case 'mp3':
           contentType = 'audio/mpeg';
           break;
-        // 可以根据需要添加更多文件类型
+        case 'wav':
+          contentType = 'audio/wav';
+          break;
+        case 'ogg':
+          contentType = 'audio/ogg';
+          break;
+        case 'aac':
+          contentType = 'audio/aac';
+          break;
+        case 'flac':
+          contentType = 'audio/flac';
+          break;
+
+        // 视频类型
+        case 'mp4':
+          contentType = 'video/mp4';
+          break;
+        case 'avi':
+          contentType = 'video/x-msvideo';
+          break;
+        case 'mov':
+          contentType = 'video/quicktime';
+          break;
+        case 'wmv':
+          contentType = 'video/x-ms-wmv';
+          break;
+        case 'flv':
+          contentType = 'video/x-flv';
+          break;
+        case 'webm':
+          contentType = 'video/webm';
+          break;
+        case 'mkv':
+          contentType = 'video/x-matroska';
+          break;
+
+        // 代码文件类型
+        case 'js':
+          contentType = 'text/javascript';
+          break;
+        case 'json':
+          contentType = 'application/json';
+          break;
+        case 'xml':
+          contentType = 'application/xml';
+          break;
+        case 'html':
+        case 'htm':
+          contentType = 'text/html';
+          break;
+        case 'css':
+          contentType = 'text/css';
+          break;
+        case 'py':
+          contentType = 'text/x-python';
+          break;
+        case 'java':
+          contentType = 'text/x-java-source';
+          break;
+        case 'c':
+        case 'cpp':
+        case 'cc':
+          contentType = 'text/x-c';
+          break;
+        case 'h':
+        case 'hpp':
+          contentType = 'text/x-c++';
+          break;
+
+        // 其他常见类型
+        case 'exe':
+          contentType = 'application/x-msdownload';
+          break;
+        case 'dmg':
+          contentType = 'application/x-apple-diskimage';
+          break;
+        case 'apk':
+          contentType = 'application/vnd.android.package-archive';
+          break;
+        case 'ipa':
+          contentType = 'application/octet-stream'; // iOS应用文件
+          break;
       }
 
       // 3. 创建表单数据
@@ -124,6 +242,18 @@ class DirectUploadService {
       debugPrint('文件MIME类型: $contentType');
       debugPrint('上传参数: puid=${config['puid']}, token=${config['token']}');
       
+      // 4. 创建自定义Dio实例，直接上传到超星网盘
+      final dio = GlobalNetworkInterceptor().createDio();
+
+      // 设置超时时间
+      final timeout = fileSize > 100 * 1024 * 1024
+          ? const Duration(minutes: 30) // 大于100MB的文件使用30分钟超时
+          : const Duration(minutes: 15);  // 小文件使用15分钟超时
+
+      // 5. 执行上传
+      debugPrint('开始直接上传到超星网盘...');
+      debugPrint('请求头: ${config['headers']}');
+
       final formData = FormData.fromMap({
         'file': await MultipartFile.fromFile(
           filePath,
@@ -138,79 +268,6 @@ class DirectUploadService {
         'fname': fileName, // 原始文件名
         'fid': dirId, // 文件夹ID，与dirId相同
       });
-      
-      debugPrint('表单数据创建完成');
-
-      // 4. 创建自定义Dio实例，直接上传到超星网盘
-      final dio = GlobalNetworkInterceptor().createDio();
-
-      // 添加请求拦截器，用于调试
-      dio.interceptors.add(InterceptorsWrapper(
-        onRequest: (options, handler) {
-          debugPrint('请求URL: ${options.uri}');
-          debugPrint('请求方法: ${options.method}');
-          debugPrint('请求头: ${options.headers}');
-          debugPrint('请求体类型: ${options.data.runtimeType}');
-          
-          // 如果是FormData，打印详细信息
-          if (options.data is FormData) {
-            final formData = options.data as FormData;
-            debugPrint('=== FormData 详细信息 ===');
-            debugPrint('边界: ${formData.boundary}');
-            debugPrint('长度: ${formData.length}');
-            debugPrint('字段数量: ${formData.fields.length}');
-            debugPrint('文件数量: ${formData.files.length}');
-            
-            // 打印所有字段
-            for (final field in formData.fields) {
-              debugPrint('字段: ${field.key} = ${field.value}');
-            }
-            
-            // 打印所有文件信息
-            for (final file in formData.files) {
-              debugPrint('文件: ${file.key}');
-              debugPrint('  文件名: ${file.value.filename}');
-              debugPrint('  内容类型: ${file.value.contentType}');
-              debugPrint('  文件大小: ${file.value.length}');
-            }
-            debugPrint('=== FormData 信息结束 ===');
-          }
-          
-          handler.next(options);
-        },
-        onResponse: (response, handler) {
-          debugPrint('响应状态码: ${response.statusCode}');
-          debugPrint('响应头: ${response.headers}');
-          debugPrint('响应类型: ${response.data.runtimeType}');
-          
-          // 如果是字符串，打印前500个字符
-          if (response.data is String) {
-            final responseStr = response.data as String;
-            debugPrint('响应内容(前500字符): ${responseStr.length > 500 ? responseStr.substring(0, 500) : responseStr}');
-          } else if (response.data is Map) {
-            debugPrint('响应Map键: ${(response.data as Map).keys.toList()}');
-            debugPrint('响应内容: ${response.data}');
-          } else {
-            debugPrint('响应内容: ${response.data}');
-          }
-          
-          handler.next(response);
-        },
-        onError: (error, handler) {
-          debugPrint('请求错误: ${error.message}');
-          debugPrint('错误响应: ${error.response}');
-          handler.next(error);
-        },
-      ));
-
-      // 设置超时时间
-      final timeout = fileSize > 100 * 1024 * 1024
-          ? const Duration(minutes: 30) // 大于100MB的文件使用30分钟超时
-          : const Duration(minutes: 15);  // 小文件使用15分钟超时
-
-      // 5. 执行上传
-      debugPrint('开始直接上传到超星网盘...');
-      debugPrint('请求头: ${config['headers']}');
 
       double lastProgress = 0.0; // 记录上一次进度，避免重复回调
       final response = await dio.post(
@@ -245,7 +302,7 @@ class DirectUploadService {
         debugPrint('完整响应数据: $responseData');
         
         // 检查响应状态 - 根据实际返回格式调整
-        if (responseData['result'] == true || responseData['msg'] == 'success') {
+        if (responseData['result'] == true) {
           // 上传成功
           debugPrint('上传成功，返回数据');
           uploadResult = {
@@ -256,14 +313,14 @@ class DirectUploadService {
         } else {
           // 上传失败
           debugPrint('上传失败: ${responseData['msg']}');
-          throw Exception(responseData['msg'] ?? '上传失败');
+          throw Exception('服务器返回错误: ${responseData['msg'] ?? '上传失败'}');
         }
       } else if (response.data is String) {
         // 处理字符串响应
         final responseStr = response.data as String;
         debugPrint('字符串响应: $responseStr');
         
-        if (responseStr.contains('success') || responseStr.contains('"result":true')) {
+        if (responseStr.contains('"result":true')) {
           debugPrint('字符串响应表示上传成功');
           uploadResult = {
             'success': true,
@@ -272,7 +329,7 @@ class DirectUploadService {
           };
         } else {
           debugPrint('字符串响应表示上传失败');
-          throw Exception('上传失败: $responseStr');
+          throw Exception('服务器返回错误: $responseStr');
         }
       } else {
         // 尝试打印响应内容
@@ -298,9 +355,11 @@ class DirectUploadService {
   ) async {
     try {
       debugPrint('开始与服务器同步上传状态');
+      debugPrint('同步参数: fileName=$fileName, dirId=$dirId');
+      debugPrint('上传结果: $uploadResult');
       
       final response = await _syncClient.post<Map<String, dynamic>>(
-        '/flutter/api',
+        'https://pan-yz.chaoxing.com/flutter/api',
         data: {
           'action': 'syncUpload',
           'uploadResult': uploadResult,
@@ -309,6 +368,8 @@ class DirectUploadService {
         },
       );
       
+      debugPrint('同步响应: $response');
+
       if (response['success'] == true) {
         debugPrint('上传状态同步成功');
       } else {
@@ -317,6 +378,7 @@ class DirectUploadService {
       }
     } catch (e) {
       debugPrint('上传状态同步异常: $e');
+      debugPrint('异常堆栈: ${StackTrace.current}');
       // 不抛出异常，因为即使同步失败，文件也已经上传成功
       debugPrint('注意：文件已成功上传到超星服务器，仅状态同步失败');
     }

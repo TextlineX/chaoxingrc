@@ -88,6 +88,15 @@ class FileProvider extends ChangeNotifier {
     return true;
   }
 
+  Future<void> navigateToRoot() async {
+    // 清空路径历史记录，只保留根目录
+    _pathHistory.clear();
+    _pathHistory.add({'id': '-1', 'name': '根目录'});
+    
+    // 加载根目录文件
+    await loadFiles(folderId: '-1');
+  }
+
   void _setLoading(bool value, {bool notify = true}) {
     _isLoading = value;
     if (notify) notifyListeners();
@@ -193,6 +202,43 @@ class FileProvider extends ChangeNotifier {
       final success =
           await _fileService.moveResource(id, targetFolderId, isFolder);
       if (success) {
+        await loadFiles(forceRefresh: true);
+      }
+      return success;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> batchMoveFiles(List<String> ids, String targetFolderId, bool isFolder) async {
+    try {
+      _setLoading(true);
+      final success =
+          await _fileService.batchMoveResources(ids, targetFolderId, isFolder);
+      if (success) {
+        await loadFiles(forceRefresh: true);
+      }
+      return success;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> batchDeleteFiles(List<String> ids, bool isFolder) async {
+    try {
+      _setLoading(true);
+      final success = await _fileService.batchDeleteResources(ids, isFolder);
+      if (success) {
+        // Remove from selection if deleted
+        _selectedFileIds.removeAll(ids);
         await loadFiles(forceRefresh: true);
       }
       return success;

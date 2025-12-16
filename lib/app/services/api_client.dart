@@ -269,6 +269,7 @@ class ApiClient {
       // 根据扩展名确定MIME类型
       String contentType = 'application/octet-stream'; // 默认类型
       switch (fileExtension) {
+        // 图片类型
         case 'jpg':
         case 'jpeg':
           contentType = 'image/jpeg';
@@ -279,6 +280,20 @@ class ApiClient {
         case 'gif':
           contentType = 'image/gif';
           break;
+        case 'bmp':
+          contentType = 'image/bmp';
+          break;
+        case 'webp':
+          contentType = 'image/webp';
+          break;
+        case 'svg':
+          contentType = 'image/svg+xml';
+          break;
+        case 'ico':
+          contentType = 'image/x-icon';
+          break;
+
+        // 文档类型
         case 'pdf':
           contentType = 'application/pdf';
           break;
@@ -306,19 +321,122 @@ class ApiClient {
         case 'txt':
           contentType = 'text/plain';
           break;
+        case 'rtf':
+          contentType = 'application/rtf';
+          break;
+        case 'odt':
+          contentType = 'application/vnd.oasis.opendocument.text';
+          break;
+        case 'ods':
+          contentType = 'application/vnd.oasis.opendocument.spreadsheet';
+          break;
+        case 'odp':
+          contentType = 'application/vnd.oasis.opendocument.presentation';
+          break;
+
+        // 压缩文件类型
         case 'zip':
           contentType = 'application/zip';
           break;
         case 'rar':
           contentType = 'application/x-rar-compressed';
           break;
-        case 'mp4':
-          contentType = 'video/mp4';
+        case '7z':
+          contentType = 'application/x-7z-compressed';
           break;
+        case 'tar':
+          contentType = 'application/x-tar';
+          break;
+        case 'gz':
+          contentType = 'application/gzip';
+          break;
+
+        // 音频类型
         case 'mp3':
           contentType = 'audio/mpeg';
           break;
-        // 可以根据需要添加更多文件类型
+        case 'wav':
+          contentType = 'audio/wav';
+          break;
+        case 'ogg':
+          contentType = 'audio/ogg';
+          break;
+        case 'aac':
+          contentType = 'audio/aac';
+          break;
+        case 'flac':
+          contentType = 'audio/flac';
+          break;
+
+        // 视频类型
+        case 'mp4':
+          contentType = 'video/mp4';
+          break;
+        case 'avi':
+          contentType = 'video/x-msvideo';
+          break;
+        case 'mov':
+          contentType = 'video/quicktime';
+          break;
+        case 'wmv':
+          contentType = 'video/x-ms-wmv';
+          break;
+        case 'flv':
+          contentType = 'video/x-flv';
+          break;
+        case 'webm':
+          contentType = 'video/webm';
+          break;
+        case 'mkv':
+          contentType = 'video/x-matroska';
+          break;
+
+        // 代码文件类型
+        case 'js':
+          contentType = 'text/javascript';
+          break;
+        case 'json':
+          contentType = 'application/json';
+          break;
+        case 'xml':
+          contentType = 'application/xml';
+          break;
+        case 'html':
+        case 'htm':
+          contentType = 'text/html';
+          break;
+        case 'css':
+          contentType = 'text/css';
+          break;
+        case 'py':
+          contentType = 'text/x-python';
+          break;
+        case 'java':
+          contentType = 'text/x-java-source';
+          break;
+        case 'c':
+        case 'cpp':
+        case 'cc':
+          contentType = 'text/x-c';
+          break;
+        case 'h':
+        case 'hpp':
+          contentType = 'text/x-c++';
+          break;
+
+        // 其他常见类型
+        case 'exe':
+          contentType = 'application/x-msdownload';
+          break;
+        case 'dmg':
+          contentType = 'application/x-apple-diskimage';
+          break;
+        case 'apk':
+          contentType = 'application/vnd.android.package-archive';
+          break;
+        case 'ipa':
+          contentType = 'application/octet-stream'; // iOS应用文件
+          break;
       }
 
       // 创建表单数据，确保action参数在顶层
@@ -385,6 +503,7 @@ class ApiClient {
       // 根据扩展名确定MIME类型
       String contentType = 'application/octet-stream'; // 默认类型
       switch (fileExtension) {
+        // 图片类型
         case 'jpg':
         case 'jpeg':
           contentType = 'image/jpeg';
@@ -395,6 +514,20 @@ class ApiClient {
         case 'gif':
           contentType = 'image/gif';
           break;
+        case 'bmp':
+          contentType = 'image/bmp';
+          break;
+        case 'webp':
+          contentType = 'image/webp';
+          break;
+        case 'svg':
+          contentType = 'image/svg+xml';
+          break;
+        case 'ico':
+          contentType = 'image/x-icon';
+          break;
+
+        // 文档类型
         case 'pdf':
           contentType = 'application/pdf';
           break;
@@ -422,19 +555,122 @@ class ApiClient {
         case 'txt':
           contentType = 'text/plain';
           break;
+        case 'rtf':
+          contentType = 'application/rtf';
+          break;
+        case 'odt':
+          contentType = 'application/vnd.oasis.opendocument.text';
+          break;
+        case 'ods':
+          contentType = 'application/vnd.oasis.opendocument.spreadsheet';
+          break;
+        case 'odp':
+          contentType = 'application/vnd.oasis.opendocument.presentation';
+          break;
+
+        // 压缩文件类型
         case 'zip':
           contentType = 'application/zip';
           break;
         case 'rar':
           contentType = 'application/x-rar-compressed';
           break;
-        case 'mp4':
-          contentType = 'video/mp4';
+        case '7z':
+          contentType = 'application/x-7z-compressed';
           break;
+        case 'tar':
+          contentType = 'application/x-tar';
+          break;
+        case 'gz':
+          contentType = 'application/gzip';
+          break;
+
+        // 音频类型
         case 'mp3':
           contentType = 'audio/mpeg';
           break;
-        // 可以根据需要添加更多文件类型
+        case 'wav':
+          contentType = 'audio/wav';
+          break;
+        case 'ogg':
+          contentType = 'audio/ogg';
+          break;
+        case 'aac':
+          contentType = 'audio/aac';
+          break;
+        case 'flac':
+          contentType = 'audio/flac';
+          break;
+
+        // 视频类型
+        case 'mp4':
+          contentType = 'video/mp4';
+          break;
+        case 'avi':
+          contentType = 'video/x-msvideo';
+          break;
+        case 'mov':
+          contentType = 'video/quicktime';
+          break;
+        case 'wmv':
+          contentType = 'video/x-ms-wmv';
+          break;
+        case 'flv':
+          contentType = 'video/x-flv';
+          break;
+        case 'webm':
+          contentType = 'video/webm';
+          break;
+        case 'mkv':
+          contentType = 'video/x-matroska';
+          break;
+
+        // 代码文件类型
+        case 'js':
+          contentType = 'text/javascript';
+          break;
+        case 'json':
+          contentType = 'application/json';
+          break;
+        case 'xml':
+          contentType = 'application/xml';
+          break;
+        case 'html':
+        case 'htm':
+          contentType = 'text/html';
+          break;
+        case 'css':
+          contentType = 'text/css';
+          break;
+        case 'py':
+          contentType = 'text/x-python';
+          break;
+        case 'java':
+          contentType = 'text/x-java-source';
+          break;
+        case 'c':
+        case 'cpp':
+        case 'cc':
+          contentType = 'text/x-c';
+          break;
+        case 'h':
+        case 'hpp':
+          contentType = 'text/x-c++';
+          break;
+
+        // 其他常见类型
+        case 'exe':
+          contentType = 'application/x-msdownload';
+          break;
+        case 'dmg':
+          contentType = 'application/x-apple-diskimage';
+          break;
+        case 'apk':
+          contentType = 'application/vnd.android.package-archive';
+          break;
+        case 'ipa':
+          contentType = 'application/octet-stream'; // iOS应用文件
+          break;
       }
 
       // 创建表单数据，确保action参数在顶层

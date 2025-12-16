@@ -1,100 +1,89 @@
 import 'package:flutter/material.dart';
+import '../../widgets/glass_effect.dart';
+import '../../widgets/topic_list/topic_list_widget.dart';
+import '../../providers/user_provider.dart';
+import 'package:provider/provider.dart';
 
-class HomeTab extends StatelessWidget {
+class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
 
   @override
+  State<HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends State<HomeTab> {
+  String? _lastBbsid;
+  Key _topicListKey = UniqueKey();
+  final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
+
+  @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      // 明确设置四周的 padding。
-      padding: const EdgeInsets.all(16.0),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 公告卡片
-          Card(
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.campaign),
-                      SizedBox(width: 8),
-                      Text(
-                        '公告',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 12),
-                  Text('暂无公告'),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: 16),
+    final userProvider = Provider.of<UserProvider>(context);
+    final bbsId = userProvider.bbsid;
+    debugPrint('HomeTab构建，bbsId: $bbsId');
+    debugPrint('UserProvider登录状态: ${userProvider.isLoggedIn}');
+    debugPrint('UserProvider用户名: ${userProvider.username}');
+    debugPrint('UserProvider是否已初始化: ${userProvider.isInitialized}');
 
-          // 活动卡片
-          Card(
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.event),
-                      SizedBox(width: 8),
-                      Text(
-                        '活动',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 12),
-                  Text('暂无活动'),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: 16),
+    // 检查bbsid是否发生变化
+    if (_lastBbsid != null && _lastBbsid != bbsId) {
+      // bbsid发生变化，更新key以强制重建TopicListWidget
+      _topicListKey = UniqueKey();
+    }
+    _lastBbsid = bbsId;
 
-          // 动态卡片
-          Card(
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.dynamic_feed),
-                      SizedBox(width: 8),
-                      Text(
-                        '动态',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 12),
-                  Text('暂无动态'),
-                ],
+    return Column(
+      children: [
+        // 标题栏
+        GlassCard(
+          margin: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              const Icon(Icons.dynamic_feed),
+              const SizedBox(width: 8),
+              const Text(
+                '动态',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        ),
+
+        // 动态列表
+        Expanded(
+          child: Builder(
+            builder: (context) {
+              if (bbsId.isNotEmpty) {
+                debugPrint('创建TopicListWidget，bbsId: $bbsId');
+                return TopicListWidget(
+                  key: _topicListKey,
+                  bbsId: bbsId,
+                );
+              } else {
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    // 当没有选择圈子时，刷新操作不执行任何操作
+                    return Future.value();
+                  },
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: SizedBox(
+                      height: MediaQuery.of(context).size.height - 200,
+                      child: const Center(
+                        child: Text('请先选择一个圈子'),
+                      ),
+                    ),
+                  ),
+                );
+              }
+            },
+          ),
+        ),
+      ],
     );
   }
 }

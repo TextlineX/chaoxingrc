@@ -1,7 +1,7 @@
 // lib/app/screens/files/files_tab.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:file_selector/file_selector.dart'; // Added import
+import 'package:file_picker/file_picker.dart';
 
 // --- 修正所有 import 路径 ---
 import '../../providers/file_provider.dart';
@@ -13,6 +13,7 @@ import '../../widgets/files_list.dart';
 import '../../widgets/files_fab.dart';
 import '../transfer/transfer_tab.dart';
 import '../../widgets/dynamic_theme_builder.dart';
+import '../../widgets/glass_effect.dart';
 
 class FilesTab extends StatefulWidget {
   const FilesTab({super.key});
@@ -81,19 +82,20 @@ class _FilesTabState extends State<FilesTab> {
 
   void _showUploadStub() async {
     try {
-      const typeGroup = XTypeGroup(label: 'files', extensions: []);
-      final files = await openFiles(acceptedTypeGroups: [typeGroup]);
+      final result = await FilePicker.platform.pickFiles(allowMultiple: true);
+      final files = result?.files ?? [];
       if (files.isEmpty) return;
 
       // 在异步操作前获取 context，避免跨异步间隙使用 BuildContext
       if (!mounted) return;
       final transferProvider = context.read<TransferProvider>();
       for (final f in files) {
-        final size = await f.length();
+        final path = f.path;
+        if (path == null || path.isEmpty) continue;
         transferProvider.addUploadTask(
-          filePath: f.path,
+          filePath: path,
           fileName: f.name,
-          fileSize: size,
+          fileSize: f.size,
           dirId: _fileProvider.currentFolderId,
         );
       }
@@ -154,19 +156,26 @@ class _FilesTabState extends State<FilesTab> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return ChangeNotifierProvider.value(
       value: _transferProvider,
       child: Scaffold(
+        backgroundColor: Colors.transparent,
         resizeToAvoidBottomInset: false,
-        body: Column(
-          children: [
-            FilesAppBar(
-              // <--- 修正：loadFiles 不再需要 context 参数
-              onRefresh: () => _fileProvider.loadFiles(),
-            ),
-            PathNavigator(provider: _fileProvider),
-            Expanded(child: FilesList(provider: _fileProvider)),
-          ],
+        body: GlassEffect(
+          blur: 15,
+          opacity: isDark ? 0.05 : 0.1,
+          margin: const EdgeInsets.all(16),
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            children: [
+              const FilesAppBar(),
+              PathNavigator(provider: _fileProvider, embedded: true),
+              Expanded(child: FilesList(provider: _fileProvider)),
+            ],
+          ),
         ),
         floatingActionButton: FilesFloatingActionButton(
           onUpload: _showUploadStub,

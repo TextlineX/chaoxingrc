@@ -27,6 +27,8 @@ class TransferTask {
   double progress;
   double speed; // Add speed field
   int downloadedBytes; // Track downloaded bytes for resume
+  int uploadedBytes; // Track uploaded bytes for chunked upload resume
+  String? uploadId; // Upload ID for chunked upload
   String? errorMessage;
   DateTime createdAt;
   DateTime? completedAt;
@@ -46,6 +48,8 @@ class TransferTask {
     this.progress = 0,
     this.speed = 0,
     this.downloadedBytes = 0,
+    this.uploadedBytes = 0,
+    this.uploadId,
     this.errorMessage,
     required this.createdAt,
     this.completedAt,
@@ -65,6 +69,8 @@ class TransferTask {
     double? progress,
     double? speed,
     int? downloadedBytes,
+    int? uploadedBytes,
+    String? uploadId,
     String? errorMessage,
     String? error, // Alias for errorMessage
     DateTime? createdAt,
@@ -85,6 +91,8 @@ class TransferTask {
       progress: progress ?? this.progress,
       speed: speed ?? this.speed,
       downloadedBytes: downloadedBytes ?? this.downloadedBytes,
+      uploadedBytes: uploadedBytes ?? this.uploadedBytes,
+      uploadId: uploadId ?? this.uploadId,
       errorMessage: errorMessage ?? error ?? this.errorMessage,
       createdAt: createdAt ?? this.createdAt,
       completedAt: completedAt ?? endTime ?? this.completedAt,

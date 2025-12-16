@@ -1,4 +1,4 @@
-import 'dart:convert'; // Add import for jsonDecode
+import 'dart:convert'; // Add import for jsonDecode'
 
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
@@ -56,6 +56,13 @@ class ChaoxingApiClient {
 
   Dio get dio => _dio;
   PersistCookieJar get cookieJar => _cookieJar;
+
+  // 获取Cookie字符串
+  Future<String> getCookieString() async {
+    if (!_initialized) await init();
+    final cookies = await _cookieJar.loadForRequest(Uri.parse(_baseUrl));
+    return cookies.map((cookie) => '${cookie.name}=${cookie.value}').join('; ');
+  }
 
   Future<void> logout() async {
     if (!_initialized) await init();
@@ -164,6 +171,50 @@ class ChaoxingApiClient {
     }
   }
 
+  // 获取用户信息 - 使用正确的API端点
+  Future<Map<String, dynamic>?> getUserInfo() async {
+    if (!_initialized) await init();
+
+    try {
+      // 使用正确的API端点获取用户信息
+      final response = await _dio.get(
+        "$_downloadBaseUrl/apis/getLoginUser?detail=1",
+        options: Options(
+          headers: {
+            "Referer": "https://noteyd.chaoxing.com/",
+          },
+          responseType: ResponseType.json,
+        ),
+      );
+
+      debugPrint("getUserInfo response type: ${response.data.runtimeType}");
+      debugPrint("getUserInfo status code: ${response.statusCode}");
+
+      if (response.statusCode == 200 && response.data != null) {
+        var data = response.data;
+        if (data is String) {
+          try {
+            data = jsonDecode(data);
+          } catch (e) {
+            debugPrint("Failed to decode JSON string: $e");
+            return null;
+          }
+        }
+
+        // 检查响应结构
+        if (data is Map && data.containsKey('result') && data['result'] == 1) {
+          if (data.containsKey('data') && data['data'] is Map) {
+            return Map<String, dynamic>.from(data['data'] as Map);
+          }
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint("Failed to get user info: $e");
+      return null;
+    }
+  }
+
   // Helper to get resources
   Future<Response> getResourceList(String bbsid, String folderId,
       {bool isFile = false}) async {
@@ -219,7 +270,7 @@ class ChaoxingApiClient {
 
     final query = isFolder
         ? {"bbsid": bbsid, "folderIds": id}
-        : {"bbsid": bbsid, "recIds": id};
+        : {"bbsid": bbsid, "recIds": id.split('\$')[0]};
 
     return _dio.get(
       path,
@@ -253,10 +304,44 @@ class ChaoxingApiClient {
 
     final query = isFolder
         ? {"bbsid": bbsid, "folderIds": id, "targetId": targetId}
-        : {"bbsid": bbsid, "recIds": id, "targetId": targetId};
+        : {"bbsid": bbsid, "recIds": id.split('\$')[0], "targetId": targetId};
 
     return _dio.get(
       "$_baseUrl/pc/resource/moveResource",
+      queryParameters: query,
+    );
+  }
+
+  // Batch move resources
+  Future<Response> batchMoveResources(
+      String bbsid, List<String> ids, String targetId, bool isFolder) async {
+    if (!_initialized) await init();
+
+    final query = isFolder
+        ? {"bbsid": bbsid, "folderIds": ids.join(','), "targetId": targetId}
+        : {"bbsid": bbsid, "recIds": ids.map((id) => id.split('\$')[0]).join(','), "targetId": targetId};
+
+    return _dio.get(
+      "$_baseUrl/pc/resource/moveResource",
+      queryParameters: query,
+    );
+  }
+
+  // Batch delete resources
+  Future<Response> batchDeleteResources(
+      String bbsid, List<String> ids, bool isFolder) async {
+    if (!_initialized) await init();
+
+    final path = isFolder
+        ? "$_baseUrl/pc/resource/deleteResourceFolder"
+        : "$_baseUrl/pc/resource/deleteResourceFile";
+
+    final query = isFolder
+        ? {"bbsid": bbsid, "folderIds": ids.join(',')}
+        : {"bbsid": bbsid, "recIds": ids.map((id) => id.split('\$')[0]).join(',')};
+
+    return _dio.get(
+      path,
       queryParameters: query,
     );
   }

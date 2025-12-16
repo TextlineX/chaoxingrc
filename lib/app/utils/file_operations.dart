@@ -142,7 +142,7 @@ class FileOperations {
                     final transferProvider =
                         Provider.of<TransferProvider>(context, listen: false);
                     // Try to find if we have a completed task for this file
-                    final completedTask = transferProvider.tasks.firstWhere(
+                    final completedTask = transferProvider.downloadTasks.firstWhere(
                       (t) =>
                           t.fileId == file.id &&
                           t.status == TransferStatus.completed,
@@ -328,10 +328,33 @@ class FileOperations {
             onPressed: () async {
               Navigator.pop(context);
 
+              // 棉花糖优化：使用批量删除API
+              final folderIds = files.where((f) => f.isFolder).map((f) => f.id).toList();
+              final fileIds = files.where((f) => !f.isFolder).map((f) => f.id).toList();
+              
               int successCount = 0;
-              for (var file in files) {
-                if (await provider.deleteFile(file.id, file.isFolder)) {
-                  successCount++;
+              bool hasError = false;
+              
+              // 分别处理文件夹和文件的批量删除
+              if (folderIds.isNotEmpty) {
+                try {
+                  if (await provider.batchDeleteFiles(folderIds, true)) {
+                    successCount += folderIds.length;
+                  }
+                } catch (e) {
+                  debugPrint('批量删除文件夹失败: $e');
+                  hasError = true;
+                }
+              }
+              
+              if (fileIds.isNotEmpty) {
+                try {
+                  if (await provider.batchDeleteFiles(fileIds, false)) {
+                    successCount += fileIds.length;
+                  }
+                } catch (e) {
+                  debugPrint('批量删除文件失败: $e');
+                  hasError = true;
                 }
               }
 
@@ -340,8 +363,12 @@ class FileOperations {
               }
 
               if (context.mounted) {
+                String message = '成功删除 $successCount 个项目';
+                if (hasError) {
+                  message += '，部分项目删除失败';
+                }
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('成功删除 $successCount 个项目')),
+                  SnackBar(content: Text(message)),
                 );
               }
             },
@@ -380,21 +407,50 @@ class FileOperations {
                 title: Text(folder.name),
                 onTap: () async {
                   Navigator.pop(context);
+                  
+                  // 使用批量移动API
+                  final folderIds = items.where((it) => it.isFolder).map((it) => it.id).toList();
+                  final fileIds = items.where((it) => !it.isFolder).map((it) => it.id).toList();
+                  
                   int success = 0;
-                  for (final it in items) {
-                    if (await provider.moveFile(
-                        it.id, folder.id, it.isFolder)) {
-                      success++;
+                  bool hasError = false;
+                  
+                  // 分别处理文件夹和文件的批量移动
+                  if (folderIds.isNotEmpty) {
+                    try {
+                      if (await provider.batchMoveFiles(folderIds, folder.id, true)) {
+                        success += folderIds.length;
+                      }
+                    } catch (e) {
+                      debugPrint('批量移动文件夹失败: $e');
+                      hasError = true;
                     }
                   }
+                  
+                  if (fileIds.isNotEmpty) {
+                    try {
+                      if (await provider.batchMoveFiles(fileIds, folder.id, false)) {
+                        success += fileIds.length;
+                      }
+                    } catch (e) {
+                      debugPrint('批量移动文件失败: $e');
+                      hasError = true;
+                    }
+                  }
+                  
                   if (provider.isSelectionMode) {
                     provider.toggleSelectionMode();
                   }
+                  
                   // 延迟一小段时间确保 context 有效
                   await Future.delayed(const Duration(milliseconds: 10));
                   if (context.mounted) {
+                    String message = '成功移动 $success 个项目';
+                    if (hasError) {
+                      message += '，部分项目移动失败';
+                    }
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('成功移动 $success 个项目')),
+                      SnackBar(content: Text(message)),
                     );
                   }
                 },
