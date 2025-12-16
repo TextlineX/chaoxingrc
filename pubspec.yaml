@@ -94,7 +94,7 @@ dev_dependencies:
 flutter_launcher_icons:
   android: "ic_launcher"
   ios: true
-  image_path: "assets/icon/app_icon.png"
+  image_path: "assets/icon/app_icon.webp"
   adaptive_icon_background: "#FFFFFF"  # 使用纯白色背景，或者您可以指定一个背景图片
   # adaptive_icon_background: "assets/icon/app_icon_background.png"
   # adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
