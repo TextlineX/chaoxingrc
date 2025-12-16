@@ -80,7 +80,7 @@ class ProfileTab extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: colorScheme.primary.withOpacity(0.1),
+                            color: colorScheme.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -97,7 +97,7 @@ class ProfileTab extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: colorScheme.primary.withOpacity(0.1),
+                            color: colorScheme.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -206,7 +206,7 @@ class ProfileTab extends StatelessWidget {
         width: 60,
         height: 60,
         decoration: BoxDecoration(
-          color: colorScheme.primaryContainer.withOpacity(0.3),
+          color: colorScheme.primaryContainer.withValues(alpha: 0.3),
           shape: BoxShape.circle,
         ),
         child: Icon(
@@ -234,7 +234,7 @@ class ProfileTab extends StatelessWidget {
         width: 60,
         height: 60,
         decoration: BoxDecoration(
-          color: colorScheme.secondaryContainer.withOpacity(0.3),
+          color: colorScheme.secondaryContainer.withValues(alpha: 0.3),
           shape: BoxShape.circle,
         ),
         child: Icon(
@@ -253,7 +253,7 @@ class ProfileTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceVariant.withOpacity(0.5),
+        color: colorScheme.surfaceVariant.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -361,9 +361,6 @@ class ProfileTab extends StatelessWidget {
       final newCircleName = result['name']?.toString() ?? '未知小组';
 
       if (newBbsid != null && newBbsid != userProvider.bbsid) {
-        // 保存切换前的bbsid
-        final oldBbsid = userProvider.bbsid;
-        
         // 设置新的bbsid
         await userProvider.setBbsid(newBbsid);
         

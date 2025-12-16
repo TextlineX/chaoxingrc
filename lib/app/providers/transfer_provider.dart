@@ -11,11 +11,9 @@ import 'dart:convert';
 import 'dart:io';
 import '../services/chaoxing/api_client.dart';
 import '../services/chaoxing/file_service.dart';
-import '../services/direct_upload_service.dart';
-import '../services/chunked_upload_service.dart';
 import 'package:open_file/open_file.dart';
 import 'package:http_parser/http_parser.dart';
-import 'package:permission_handler/permission_handler.dart';
+import '../services/chunked_upload_service.dart';
 
 class TransferProvider extends ChangeNotifier {
   final List<TransferTask> _tasks = [];

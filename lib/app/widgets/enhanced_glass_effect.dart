@@ -39,22 +39,22 @@ class EnhancedGlassEffect extends StatelessWidget {
 
     // 默认颜色根据主题变化
     final defaultColor = isDark 
-        ? Colors.white.withOpacity(0.05) 
-        : Colors.black.withOpacity(0.1);
+        ? Colors.white.withValues(alpha: 0.05) 
+        : Colors.black.withValues(alpha: 0.1);
 
     // 默认边框根据主题变化
     final defaultBorder = Border.all(
       color: isDark 
-          ? Colors.white.withOpacity(0.1) 
-          : Colors.white.withOpacity(0.2),
+          ? Colors.white.withValues(alpha: 0.1) 
+          : Colors.white.withValues(alpha: 0.2),
       width: 1,
     );
 
     // 默认阴影根据主题变化
     final defaultBoxShadow = BoxShadow(
       color: isDark 
-          ? Colors.black.withOpacity(0.2) 
-          : Colors.black.withOpacity(0.1),
+          ? Colors.black.withValues(alpha: 0.2) 
+          : Colors.black.withValues(alpha: 0.1),
       blurRadius: 10,
       spreadRadius: 0,
       offset: const Offset(0, 4),

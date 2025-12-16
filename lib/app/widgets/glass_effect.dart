@@ -44,16 +44,16 @@ class GlassEffect extends StatelessWidget {
     // 默认边框根据主题变化
     final defaultBorder = Border.all(
       color: isDark 
-          ? Colors.white.withOpacity(0.15) 
-          : Colors.black.withOpacity(0.25),
+          ? Colors.white.withValues(alpha: 0.15) 
+          : Colors.black.withValues(alpha: 0.25),
       width: 1,
     );
 
     // 默认阴影根据主题变化
     final defaultBoxShadow = BoxShadow(
       color: isDark 
-          ? Colors.black.withOpacity(0.2) 
-          : Colors.black.withOpacity(0.1),
+          ? Colors.black.withValues(alpha: 0.2) 
+          : Colors.black.withValues(alpha: 0.1),
       blurRadius: 10,
       spreadRadius: 0,
       offset: const Offset(0, 4),
@@ -229,7 +229,7 @@ class GlassDialog extends StatelessWidget {
             const SizedBox(height: 16),
             DefaultTextStyle(
               style: theme.textTheme.bodyMedium!.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.8),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
               ),
               child: content,
             ),

@@ -137,12 +137,12 @@ class _BannerWidgetState extends State<BannerWidget> {
     if (_banners.isEmpty) {
       final theme = Theme.of(context);
       return Container(
-        color: theme.colorScheme.surface.withOpacity(0.3),
+        color: theme.colorScheme.surface.withValues(alpha: 0.3),
         child: Center(
           child: Text(
             '暂无Banner',
             style: TextStyle(
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
         ),
@@ -188,7 +188,7 @@ class _BannerWidgetState extends State<BannerWidget> {
               if (_cookieString.isNotEmpty) 'Cookie': _cookieString,
             },
             placeholder: (context, url) => Container(
-              color: theme.colorScheme.surface.withOpacity(0.3),
+              color: theme.colorScheme.surface.withValues(alpha: 0.3),
               child: Center(
                 child: CircularProgressIndicator(
                   color: theme.colorScheme.primary,
@@ -221,7 +221,7 @@ class _BannerWidgetState extends State<BannerWidget> {
             },
           )
               : Container(
-            color: theme.colorScheme.surface.withOpacity(0.3),
+            color: theme.colorScheme.surface.withValues(alpha: 0.3),
             child: Center(
               child: Text(
                 '暂无图片',

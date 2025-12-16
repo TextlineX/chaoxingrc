@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "textline.chaoxingrc.chaoxingrc"
+    namespace = "textline.chaoxingrc"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -28,32 +28,39 @@ android {
         targetSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // 增加内存堆大小以避免大文件处理时出现OOM
+        multiDexEnabled = true
     }
 
-    flavorDimensions += "env"
-
-    productFlavors {
-        create("beta") {
-            dimension = "env"
-            applicationIdSuffix = ".beta"
-            resValue("string", "app_name", "超星网盘(测试)")
-        }
-        create("prod") {
-            dimension = "env"
-            resValue("string", "app_name", "超星网盘")
-        }
-    }
+    // 移除产品风味配置
 
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            
+            // 增加内存设置以避免构建时出现OOM
+            ndk {
+                abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a"))
+            }
         }
         debug {
             // 调试版本也增加内存
             isDebuggable = true
+            
+            // 增加内存设置以避免构建时出现OOM
+            ndk {
+                abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86_64"))
+            }
         }
+    }
+    
+    // 增加 dexOptions 以提高构建性能并避免内存问题
+    dexOptions {
+        javaMaxHeapSize = "4g"
+        preDexLibraries = false
     }
 }
 

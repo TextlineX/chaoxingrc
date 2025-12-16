@@ -69,7 +69,7 @@ class FileOperations {
                 // Use TransferProvider to start download
                 final transferProvider =
                     Provider.of<TransferProvider>(context, listen: false);
-                await transferProvider.addDownloadTask(
+                transferProvider.addDownloadTask(
                     fileId: file.id, fileName: file.name, fileSize: file.size);
 
                 if (context.mounted) {
@@ -177,7 +177,7 @@ class FileOperations {
                             FilledButton(
                               onPressed: () async {
                                 Navigator.pop(context);
-                                await transferProvider.addDownloadTask(
+                                transferProvider.addDownloadTask(
                                     fileId: file.id,
                                     fileName: file.name,
                                     fileSize: file.size);
@@ -250,7 +250,7 @@ class FileOperations {
                   // Use TransferProvider to start download
                   final transferProvider =
                       Provider.of<TransferProvider>(context, listen: false);
-                  await transferProvider.addDownloadTask(
+                  transferProvider.addDownloadTask(
                       fileId: file.id,
                       fileName: file.name,
                       fileSize: file.size);

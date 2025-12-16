@@ -110,8 +110,8 @@ class _HomeScreenState extends State<HomeScreen>
                       filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
                       child: Container(
                         color: themeProvider.hasCustomWallpaper
-                            ? Colors.black.withOpacity(0.15)
-                            : Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                            ? Colors.black.withValues(alpha: 0.15)
+                            : Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                         padding: EdgeInsets.only(
                           top: MediaQuery.of(context).padding.top,
                         ),

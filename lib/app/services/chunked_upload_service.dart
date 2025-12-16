@@ -217,8 +217,6 @@ class ChunkedUploadService {
     RandomAccessFile? randomAccessFile;
     try {
       randomAccessFile = await file.open();
-      const int bufferSize = 8 * 1024 * 1024; // 8MB缓冲区
-      int position = 0;
       final fileSize = await file.length();
 
       // 使用文件流读取

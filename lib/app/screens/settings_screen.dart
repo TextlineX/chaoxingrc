@@ -211,9 +211,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Container(
                   color: themeProvider.hasCustomWallpaper
                       ? theme.brightness == Brightness.dark 
-                          ? Colors.black.withOpacity(0.2) 
-                          : Colors.white.withOpacity(0.1)
-                      : theme.colorScheme.primary.withOpacity(0.2),
+                          ? Colors.black.withValues(alpha: 0.2) 
+                          : Colors.white.withValues(alpha: 0.1)
+                      : theme.colorScheme.primary.withValues(alpha: 0.2),
                 ),
               ),
             ),

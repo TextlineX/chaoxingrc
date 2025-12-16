@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/transfer_provider.dart';
 import '../../models/transfer_task.dart';
-import '../../widgets/transfer_task_item.dart';
 import '../../widgets/glass_effect.dart';
 
 class TransferTab extends StatefulWidget {
@@ -37,7 +36,6 @@ class _TransferTabState extends State<TransferTab>
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final primaryColor = colorScheme.primary;
-    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: Colors.transparent, // 设置背景为透明
@@ -106,7 +104,6 @@ class _TransferTabState extends State<TransferTab>
       ),
       body: GlassEffect(
         blur: 15,
-        opacity: isDark ? 0.05 : 0.1,
         margin: const EdgeInsets.all(16),
         borderRadius: BorderRadius.circular(16),
         child: TabBarView(
@@ -305,7 +302,6 @@ class _TransferTabState extends State<TransferTab>
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final primaryColor = colorScheme.primary;
-    final isDark = theme.brightness == Brightness.dark;
 
     return Consumer<TransferProvider>(
       builder: (context, provider, child) {
