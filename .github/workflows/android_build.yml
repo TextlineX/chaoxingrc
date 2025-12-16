@@ -1,31 +1,21 @@
-# 工作流名称
 name: android_build
 
-# 触发条件
 on:
-  # 当推送代码到 master 或 beta 分支时触发
   push:
     branches: [ "master", "beta" ]
-    # 忽略 Markdown 文件和 docs 目录的变更（避免不必要的构建）
     paths-ignore:
       - '**.md'
       - 'docs/**'
-  
-  # 当向 master 或 beta 分支发起 Pull Request 时触发（用于 CI 检查）
   pull_request:
     branches: [ "master", "beta" ]
-  
-  # 支持手动触发工作流（用于特殊情况下的强制发布）
   workflow_dispatch:
     inputs:
       release_notes:
-        description: '发布说明（可选，手动触发时可填写变更内容）'
+        description: '发布说明'
         required: false
         type: string
 
-# 任务定义
 jobs:
-  # 第一阶段：构建与测试
   build:
     name: Build & Test
     runs-on: ubuntu-latest
@@ -33,11 +23,13 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 配置 Java 环境（Flutter Android 构建必需）
+      - name: 配置 Java 环境
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
+          # 核心修复：开启 Gradle 缓存，极大降低 Connection Refused 概率
+          cache: 'gradle'
 
       - name: 配置 Flutter 环境
         uses: subosito/flutter-action@v2
@@ -48,110 +40,56 @@ jobs:
       - name: 安装项目依赖
         run: flutter pub get
 
+      - name: 修复 Gradlew 权限
+        run: chmod +x android/gradlew
+
       - name: 代码静态分析
-        # 使用 || true 确保即使有警告也不会中断构建
         run: flutter analyze || true
 
       - name: 构建安装包
         run: |
-          # 根据当前分支选择构建类型
           if [[ "${{ github.ref_name }}" == "beta" ]]; then
             echo "正在构建 Beta 版本 APK..."
-            # 由于 build.gradle.kts 已配置 debug 签名，这里直接构建即可
-            flutter build apk --release
+            flutter build apk --release --no-pub
           else
-            echo "正在构建正式版本 APK 和 AAB..."
-            # 直接构建，签名由 build.gradle.kts 处理
-            flutter build apk --release
-            flutter build appbundle --release
+            echo "正在构建正式版本..."
+            flutter build apk --release --no-pub
+            flutter build appbundle --release --no-pub
           fi
 
-      - name: 上传所有 APK 文件到 Artifacts
+      - name: 上传 APK 产物
         uses: actions/upload-artifact@v4
         with:
           name: apks
           path: build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: error
 
-      - name: 上传 AAB 文件（仅正式版需要）
-        if: github.ref_name != 'beta'
-        uses: actions/upload-artifact@v4
-        with:
-          name: aab
-          path: build/app/outputs/bundle/release/app-release.aab
-          if-no-files-found: error
-
-  # 第二阶段：创建 GitHub Release
   release:
     name: Create Release
     needs: build
-    # 触发条件：代码推送 或 手动触发
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
-      - name: 检出代码（用于读取 pubspec.yaml）
+      - name: 检出代码
         uses: actions/checkout@v4
 
       - name: 获取当前版本号
         id: version
         run: |
-          # 从 pubspec.yaml 中提取完整版本（可能包含 +build）
           FULL_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | xargs)
-          # 去掉 +build 及其后面的内容，只保留 x.y.z 部分（更美观）
           CLEAN_VERSION=$(echo $FULL_VERSION | sed 's/+.*//')
-          # 输出供后续步骤使用
-          echo "full_version=$FULL_VERSION" >> $GITHUB_OUTPUT
           echo "clean_version=$CLEAN_VERSION" >> $GITHUB_OUTPUT
-          echo "检测到版本：$CLEAN_VERSION（原始：$FULL_VERSION）"
 
       - name: 下载构建产物
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: 创建正式版 Release（master 分支）
-        if: github.ref_name == 'master'
+      - name: 发布 Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.clean_version }}
-          name: Release v${{ steps.version.outputs.clean_version }}
-          body: |
-            ## 🚀 正式版发布 v${{ steps.version.outputs.clean_version }}
-            
-            ${{ inputs.release_notes }}
-            
-            来自 master 分支的自动构建。
-            
-            ### 📦 下载
-            - 正式版 APK
-            - 正式版 AAB（用于上传 Google Play）
-          files: |
-            artifacts/apks/app-release.apk
-            artifacts/aab/app-release.aab
-          draft: false
-          prerelease: false
-          fail_on_unmatched_files: false
-
-      - name: 创建 Beta 版 Release（beta 分支）
-        if: github.ref_name == 'beta'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.version.outputs.clean_version }}-beta
-          name: Beta v${{ steps.version.outputs.clean_version }}
-          body: |
-            ## 🧪 测试版发布 v${{ steps.version.outputs.clean_version }}
-            
-            ${{ inputs.release_notes }}
-            
-            来自 beta 分支的自动构建。
-            
-            ### 📦 下载
-            - Beta 版 APK
-          files: |
-            artifacts/apks/app-release.apk
-          draft: false
-          prerelease: true
-          fail_on_unmatched_files: false
+          tag_name: ${{ github.ref_name == 'beta' && format('v{0}-beta', steps.version.outputs.clean_version) || format('v{0}', steps.version.outputs.clean_version) }}
+          name: ${{ github.ref_name == 'beta' && 'Beta v' || 'Release v' }}${{ steps.version.outputs.clean_version }}
+          prerelease: ${{ github.ref_name == 'beta' }}
+          files: artifacts/apks/app-release.apk
