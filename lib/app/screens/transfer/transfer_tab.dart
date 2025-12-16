@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/transfer_provider.dart';
 import '../../models/transfer_task.dart';
-import '../../widgets/glass_effect.dart';
+import '../../providers/theme_provider.dart';
+import '../../widgets/conditional_glass_effect.dart';
 
 class TransferTab extends StatefulWidget {
   const TransferTab({super.key, this.showTitle = false});
@@ -36,29 +37,22 @@ class _TransferTabState extends State<TransferTab>
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final primaryColor = colorScheme.primary;
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: Colors.transparent, // 设置背景为透明
+      backgroundColor: themeProvider.hasCustomWallpaper
+          ? Colors.transparent
+          : Theme.of(context).colorScheme.surface,
       primary: false, // 嵌套在 HomeScreen 中，不需要处理顶部状态栏区域
       appBar: AppBar(
         title: widget.showTitle ? const Text('传输列表') : null,
         centerTitle: true,
         elevation: 0,
-        backgroundColor: Colors.transparent,
+        backgroundColor: themeProvider.hasCustomWallpaper
+            ? Colors.transparent
+            : Theme.of(context).colorScheme.surface,
         foregroundColor: primaryColor,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                primaryColor.withValues(alpha: 0.1),
-                primaryColor.withValues(alpha: 0.05),
-                Colors.transparent,
-              ],
-            ),
-          ),
-        ),
         bottom: TabBar(
           controller: _tabController,
           indicator: BoxDecoration(
@@ -102,8 +96,11 @@ class _TransferTabState extends State<TransferTab>
           ),
         ],
       ),
-      body: GlassEffect(
+      body: ConditionalGlassEffect(
         blur: 15,
+        opacity: themeProvider.hasCustomWallpaper
+            ? (isDark ? 0.05 : 0.1)
+            : 0.0,
         margin: const EdgeInsets.all(16),
         borderRadius: BorderRadius.circular(16),
         child: TabBarView(
@@ -176,7 +173,7 @@ class _TransferTabState extends State<TransferTab>
               onPressed: () {
                 showDialog(
                   context: context,
-                  builder: (context) => GlassDialog(
+                  builder: (context) => ConditionalGlassDialog(
                     title: const Text('确认删除'),
                     content: const Text('确定要删除此任务吗？'),
                     actions: [
@@ -231,7 +228,7 @@ class _TransferTabState extends State<TransferTab>
               onPressed: () {
                 showDialog(
                   context: context,
-                  builder: (context) => GlassDialog(
+                  builder: (context) => ConditionalGlassDialog(
                     title: const Text('确认删除'),
                     content: const Text('确定要删除此任务吗？'),
                     actions: [
@@ -270,7 +267,7 @@ class _TransferTabState extends State<TransferTab>
               onPressed: () {
                 showDialog(
                   context: context,
-                  builder: (context) => GlassDialog(
+                  builder: (context) => ConditionalGlassDialog(
                     title: const Text('确认删除'),
                     content: const Text('确定要删除此任务吗？'),
                     actions: [
@@ -311,7 +308,7 @@ class _TransferTabState extends State<TransferTab>
 
         if (tasks.isEmpty) {
           return Center(
-            child: GlassCard(
+            child: ConditionalGlassCard(
               margin: const EdgeInsets.symmetric(horizontal: 32),
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -365,13 +362,13 @@ class _TransferTabState extends State<TransferTab>
           onRefresh: () async {
             provider.refresh();
           },
-          child: GlassEffectWithScrollConfiguration(
+          child: ConditionalGlassEffect(
             child: ListView.builder(
               padding: const EdgeInsets.only(bottom: 80), // 为底部导航栏留出空间
               itemCount: tasks.length,
               itemBuilder: (context, index) {
                 final task = tasks[index];
-                return GlassListTile(
+                return ConditionalGlassListTile(
                   title: Text(task.fileName),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

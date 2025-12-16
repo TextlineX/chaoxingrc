@@ -104,6 +104,9 @@ class ChaoxingAuthManager {
   Future<void> setBbsid(String bbsid) async {
     await StorageService.setString(_keyBbsid, bbsid);
     _bbsid = bbsid;
+    
+    // 在切换小组时，可能需要重新初始化API客户端以确保使用正确的认证信息
+    await ChaoxingApiClient().init();
   }
 
   Future<void> setCircles(List<Map<String, dynamic>> circles) async {

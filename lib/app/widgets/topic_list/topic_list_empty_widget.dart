@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../enhanced_glass_effect.dart';
+import '../glass_effect.dart';
 
 class TopicListEmptyWidget extends StatelessWidget {
   const TopicListEmptyWidget({super.key});
@@ -15,7 +15,7 @@ class TopicListEmptyWidget extends StatelessWidget {
           constraints: const BoxConstraints(
             maxWidth: 500,
           ),
-          child: EnhancedGlassCard(
+          child: GlassCard(
             width: double.infinity,
             margin: const EdgeInsets.all(16.0),
             padding: const EdgeInsets.all(24.0),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/file_provider.dart';
 import '../utils/file_operations.dart';
-import 'file_item_widget.dart';
+import 'cards/file_item_widget.dart';
 
 class FilesList extends StatelessWidget {
   final FileProvider provider;

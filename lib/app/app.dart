@@ -9,7 +9,7 @@ import 'screens/home_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'widgets/dynamic_theme_builder.dart';
-import 'widgets/debug_panel.dart';
+
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -21,8 +21,6 @@ class App extends StatelessWidget {
         return MaterialApp(
           title: '超星网盘',
           debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
           themeMode: themeProvider.themeMode,
           builder: (context, child) {
             return child!;
@@ -33,9 +31,7 @@ class App extends StatelessWidget {
               DynamicThemeBuilder(
                 child: _getMainScreen(userProvider),
               ),
-              // 只要开启开发者模式就显示调试面板，无论哪种登录模式
-              if (userProvider.isDeveloperMode && userProvider.isInitialized)
-                const DebugPanel(),
+
             ],
           ),
           routes: AppRoutes.routes,

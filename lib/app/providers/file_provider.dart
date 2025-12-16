@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../models/file_item.dart';
+import '../models/permission_model.dart';
 import '../services/chaoxing/file_service.dart';
+import 'permission_provider.dart';
 
 class FileProvider extends ChangeNotifier {
   final ChaoxingFileService _fileService = ChaoxingFileService();
+  PermissionProvider? _permissionProvider;
 
   List<FileItem> _files = [];
   bool _isLoading = false;
@@ -32,6 +35,11 @@ class FileProvider extends ChangeNotifier {
 
   bool isFileSelected(String fileId) => _selectedFileIds.contains(fileId);
 
+  // 设置权限提供者
+  void setPermissionProvider(PermissionProvider permissionProvider) {
+    _permissionProvider = permissionProvider;
+  }
+
   String get formattedTotalSize {
     if (_totalSize < 1024) {
       return '${_totalSize}B';
@@ -48,6 +56,12 @@ class FileProvider extends ChangeNotifier {
   Future<void> init({bool notify = true}) async {
     if (_isInitialized) return;
     _isInitialized = true;
+    
+    // 初始化权限
+    if (_permissionProvider != null) {
+      await _permissionProvider!.init(notify: false);
+    }
+    
     if (notify) notifyListeners();
   }
 
@@ -59,6 +73,12 @@ class FileProvider extends ChangeNotifier {
 
     try {
       debugPrint('Loading files for folder: $targetFolderId');
+      
+      // 如果是根目录，刷新权限
+      if (targetFolderId == '-1' && forceRefresh && _permissionProvider != null) {
+        await _permissionProvider!.refreshPermissions(notify: false);
+      }
+      
       final loadedFiles = await _fileService.getFiles(targetFolderId);
 
       _files = loadedFiles;
@@ -68,6 +88,12 @@ class FileProvider extends ChangeNotifier {
     } catch (e) {
       _error = e.toString();
       debugPrint('Error loading files: $e');
+      
+      // 如果是权限相关的错误，提供更友好的提示
+      if (e.toString().contains('权限不足') || e.toString().contains('暂无权限')) {
+        _error = '权限不足：${e.toString().contains("请前往\"学习通app-我的-头像-绑定单位\"完成绑定操作") ? "您需要在学习通APP中完成单位绑定才能访问此功能" : "请联系小组管理员获取相应权限"}';
+      }
+      
       if (notify) notifyListeners();
     } finally {
       _setLoading(false, notify: notify);
@@ -92,6 +118,11 @@ class FileProvider extends ChangeNotifier {
     // 清空路径历史记录，只保留根目录
     _pathHistory.clear();
     _pathHistory.add({'id': '-1', 'name': '根目录'});
+    
+    // 刷新权限
+    if (_permissionProvider != null) {
+      await _permissionProvider!.refreshPermissions(notify: false);
+    }
     
     // 加载根目录文件
     await loadFiles(folderId: '-1');
@@ -142,6 +173,13 @@ class FileProvider extends ChangeNotifier {
 
   // Operations wrappers
   Future<bool> createFolder(String name) async {
+    // 检查创建文件夹的权限
+    if (_permissionProvider == null || !_permissionProvider!.checkCreateFolderPermission()) {
+      _error = _permissionProvider?.error ?? '您没有创建文件夹的权限';
+      notifyListeners();
+      return false;
+    }
+    
     try {
       _setLoading(true);
       final success = await _fileService.createFolder(name, currentFolderId);
@@ -151,6 +189,10 @@ class FileProvider extends ChangeNotifier {
       return success;
     } catch (e) {
       _error = e.toString();
+      // 如果是权限相关的错误，提供更友好的提示
+      if (e.toString().contains('权限不足') || e.toString().contains('暂无权限')) {
+        _error = '权限不足：请联系小组管理员获取相应权限';
+      }
       notifyListeners();
       return false;
     } finally {
@@ -159,6 +201,13 @@ class FileProvider extends ChangeNotifier {
   }
 
   Future<bool> renameFile(String id, String newName, bool isFolder) async {
+    // 检查重命名的权限
+    if (isFolder && (_permissionProvider == null || !_permissionProvider!.checkRenameFolderPermission())) {
+      _error = _permissionProvider?.error ?? '您没有重命名文件夹的权限';
+      notifyListeners();
+      return false;
+    }
+    
     try {
       _setLoading(true);
       final success = await _fileService.renameResource(id, newName, isFolder);
@@ -168,6 +217,10 @@ class FileProvider extends ChangeNotifier {
       return success;
     } catch (e) {
       _error = e.toString();
+      // 如果是权限相关的错误，提供更友好的提示
+      if (e.toString().contains('权限不足') || e.toString().contains('暂无权限')) {
+        _error = '权限不足：请联系小组管理员获取相应权限';
+      }
       notifyListeners();
       return false;
     } finally {
@@ -176,6 +229,19 @@ class FileProvider extends ChangeNotifier {
   }
 
   Future<bool> deleteFile(String id, bool isFolder) async {
+    // 检查删除的权限
+    if (isFolder && (_permissionProvider == null || !_permissionProvider!.checkDeletePermission())) {
+      _error = _permissionProvider?.error ?? '您没有删除文件夹的权限';
+      notifyListeners();
+      return false;
+    }
+    
+    if (!isFolder && (_permissionProvider == null || !_permissionProvider!.checkDeletePermission())) {
+      _error = _permissionProvider?.error ?? '您没有删除文件的权限';
+      notifyListeners();
+      return false;
+    }
+    
     try {
       _setLoading(true);
       final success = await _fileService.deleteResource(id, isFolder);
@@ -189,6 +255,10 @@ class FileProvider extends ChangeNotifier {
       return success;
     } catch (e) {
       _error = e.toString();
+      // 如果是权限相关的错误，提供更友好的提示
+      if (e.toString().contains('权限不足') || e.toString().contains('暂无权限')) {
+        _error = '权限不足：请联系小组管理员获取相应权限';
+      }
       notifyListeners();
       return false;
     } finally {
@@ -197,6 +267,13 @@ class FileProvider extends ChangeNotifier {
   }
 
   Future<bool> moveFile(String id, String targetFolderId, bool isFolder) async {
+    // 检查移动的权限
+    if ((_permissionProvider == null || !_permissionProvider!.checkMoveFilePermission())) {
+      _error = _permissionProvider?.error ?? '您没有移动文件的权限';
+      notifyListeners();
+      return false;
+    }
+    
     try {
       _setLoading(true);
       final success =
@@ -207,6 +284,10 @@ class FileProvider extends ChangeNotifier {
       return success;
     } catch (e) {
       _error = e.toString();
+      // 如果是权限相关的错误，提供更友好的提示
+      if (e.toString().contains('权限不足') || e.toString().contains('暂无权限')) {
+        _error = '权限不足：请联系小组管理员获取相应权限';
+      }
       notifyListeners();
       return false;
     } finally {
@@ -215,6 +296,13 @@ class FileProvider extends ChangeNotifier {
   }
 
   Future<bool> batchMoveFiles(List<String> ids, String targetFolderId, bool isFolder) async {
+    // 检查批量移动的权限
+    if (_permissionProvider == null || !_permissionProvider!.checkBatchOperationPermission()) {
+      _error = _permissionProvider?.error ?? '您没有批量移动的权限';
+      notifyListeners();
+      return false;
+    }
+    
     try {
       _setLoading(true);
       final success =
@@ -225,6 +313,10 @@ class FileProvider extends ChangeNotifier {
       return success;
     } catch (e) {
       _error = e.toString();
+      // 如果是权限相关的错误，提供更友好的提示
+      if (e.toString().contains('权限不足') || e.toString().contains('暂无权限')) {
+        _error = '权限不足：请联系小组管理员获取相应权限';
+      }
       notifyListeners();
       return false;
     } finally {
@@ -233,6 +325,13 @@ class FileProvider extends ChangeNotifier {
   }
 
   Future<bool> batchDeleteFiles(List<String> ids, bool isFolder) async {
+    // 检查批量删除的权限
+    if (_permissionProvider == null || !_permissionProvider!.checkBatchOperationPermission()) {
+      _error = _permissionProvider?.error ?? '您没有批量删除的权限';
+      notifyListeners();
+      return false;
+    }
+    
     try {
       _setLoading(true);
       final success = await _fileService.batchDeleteResources(ids, isFolder);
@@ -244,6 +343,10 @@ class FileProvider extends ChangeNotifier {
       return success;
     } catch (e) {
       _error = e.toString();
+      // 如果是权限相关的错误，提供更友好的提示
+      if (e.toString().contains('权限不足') || e.toString().contains('暂无权限')) {
+        _error = '权限不足：请联系小组管理员获取相应权限';
+      }
       notifyListeners();
       return false;
     } finally {
@@ -256,8 +359,33 @@ class FileProvider extends ChangeNotifier {
       return await _fileService.getDownloadUrl(fileId);
     } catch (e) {
       _error = e.toString();
+      // 如果是权限相关的错误，提供更友好的提示
+      if (e.toString().contains('权限不足') || e.toString().contains('暂无权限')) {
+        _error = '权限不足：请联系小组管理员获取相应权限';
+      }
       notifyListeners();
       return null;
+    }
+  }
+
+  /// 获取指定文件夹下的子文件夹
+  Future<List<FileItem>> getSubfolders(String folderId) async {
+    try {
+      // 如果是根目录，刷新权限
+      if (folderId == '-1' && _permissionProvider != null) {
+        await _permissionProvider!.refreshPermissions(notify: false);
+      }
+      
+      final files = await _fileService.getFiles(folderId);
+      return files.where((f) => f.isFolder).toList();
+    } catch (e) {
+      _error = e.toString();
+      // 如果是权限相关的错误，提供更友好的提示
+      if (e.toString().contains('权限不足') || e.toString().contains('暂无权限')) {
+        _error = '权限不足：${e.toString().contains("请前往\"学习通app-我的-头像-绑定单位\"完成绑定操作") ? "您需要在学习通APP中完成单位绑定才能访问此功能" : "请联系小组管理员获取相应权限"}';
+      }
+      notifyListeners();
+      rethrow;
     }
   }
 }

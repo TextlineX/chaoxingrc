@@ -1,6 +1,6 @@
-
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../widgets/conditional_glass_effect.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -30,7 +30,9 @@ class _AboutScreenState extends State<AboutScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: const Text('关于'),
       ),
       body: SingleChildScrollView(
@@ -77,7 +79,7 @@ class _AboutScreenState extends State<AboutScreen> {
             const SizedBox(height: 24),
 
             // 描述
-            Card(
+            ConditionalGlassCard(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -106,7 +108,7 @@ class _AboutScreenState extends State<AboutScreen> {
             const SizedBox(height: 16),
 
             // 开源许可
-            Card(
+            ConditionalGlassCard(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(

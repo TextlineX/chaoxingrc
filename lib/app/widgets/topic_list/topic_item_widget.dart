@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chaoxingrc/app/services/chaoxing/api_client.dart';
-import '../enhanced_glass_effect.dart';
+import '../glass_effect.dart';
 
 class TopicItemWidget extends StatelessWidget {
   final Map<String, dynamic> topic;
@@ -97,7 +97,7 @@ class TopicItemWidget extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: EnhancedGlassCard(
+      child: GlassCard(
         padding: const EdgeInsets.all(16.0),
         borderRadius: BorderRadius.circular(isTop ? 20 : 16),
         child: Column(

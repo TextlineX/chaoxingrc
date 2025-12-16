@@ -7,6 +7,7 @@ class ThemeProvider extends ChangeNotifier {
   static const String _themeKey = 'theme_mode';
   static const String _colorKey = 'theme_color';
   static const String _dynamicKey = 'use_dynamic_color';
+  static const String _useGlassEffectKey = 'use_glass_effect';
   static const String _wallpaperPathKey = 'custom_wallpaper_path';  // ← 新增：壁纸路径的key
   static const String _useWallpaperKey = 'use_custom_wallpaper';    // ← 新增：是否使用壁纸的开关
 
@@ -15,6 +16,7 @@ class ThemeProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = Colors.blue;
   bool _useDynamicColor = true;
+  bool _useGlassEffect = false;  // 默认关闭毛玻璃效果
 
   // 壁纸相关新属性
   String _backgroundImagePath = '';     // 壁纸文件路径
@@ -24,6 +26,7 @@ class ThemeProvider extends ChangeNotifier {
   ThemeMode get themeMode => _themeMode;
   Color get seedColor => _seedColor;
   bool get useDynamicColor => _useDynamicColor;
+  bool get useGlassEffect => _useGlassEffect;
   String get backgroundImagePath => _backgroundImagePath;
   bool get useCustomWallpaper => _useCustomWallpaper;  // ← 新增
   bool get hasCustomWallpaper => _useCustomWallpaper && _backgroundImagePath.isNotEmpty;
@@ -41,6 +44,12 @@ class ThemeProvider extends ChangeNotifier {
 
     // 加载是否使用系统动态色
     _useDynamicColor = _prefs.getBool(_dynamicKey) ?? true;
+
+    // 加载毛玻璃效果设置
+    _useGlassEffect = _prefs.getBool(_useGlassEffectKey) ?? false;  // 默认关闭
+
+    // 加载毛玻璃效果设置
+    _useGlassEffect = _prefs.getBool(_useGlassEffectKey) ?? false;  // 默认关闭
 
     // ← 新增：加载自定义壁纸相关设置
     _backgroundImagePath = _prefs.getString(_wallpaperPathKey) ?? '';
@@ -92,6 +101,13 @@ class ThemeProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // 设置是否使用毛玻璃效果
+  Future<void> setUseGlassEffect(bool b) async {
+    _useGlassEffect = b;
+    await _prefs.setBool(_useGlassEffectKey, b);
+    notifyListeners();
+  }
+
   /// ← 核心新功能：设置自定义壁纸
   /// 设置壁纸作为背景，如果启用了动态取色，则从壁纸中提取主题色
   Future<void> setCustomWallpaper(String imagePath) async {
@@ -131,7 +147,7 @@ class ThemeProvider extends ChangeNotifier {
           brightness: brightness,
         );
         debugPrint('从壁纸成功提取主题色: ${scheme.primary}');
-        return scheme;
+        return _applyBrightnessBasedOverrides(scheme, brightness);
       } catch (e) {
         debugPrint('从壁纸提取颜色失败: $e');
         // 继续尝试其他方法
@@ -143,7 +159,8 @@ class ThemeProvider extends ChangeNotifier {
       try {
         final corePalette = await DynamicColorPlugin.getCorePalette();
         if (corePalette != null) {
-          return corePalette.toColorScheme(brightness: brightness);
+          final scheme = corePalette.toColorScheme(brightness: brightness);
+          return _applyBrightnessBasedOverrides(scheme, brightness);
         }
       } catch (e) {
         debugPrint('获取系统动态色失败: $e');
@@ -151,7 +168,70 @@ class ThemeProvider extends ChangeNotifier {
     }
 
     // 使用手动选择的 seedColor
-    return ColorScheme.fromSeed(seedColor: _seedColor, brightness: brightness);
+    final baseScheme = ColorScheme.fromSeed(
+      seedColor: _seedColor,
+      brightness: brightness,
+    );
+    return _applyBrightnessBasedOverrides(baseScheme, brightness);
+  }
+
+  /// 根据亮度应用特定的覆盖颜色
+  ColorScheme _applyBrightnessBasedOverrides(ColorScheme scheme, Brightness brightness) {
+    if (brightness == Brightness.light) {
+      // 对于浅色主题，确保表面和背景颜色适当，以提供良好的可读性
+      // 当使用自定义壁纸时，强制使用高对比度的颜色以确保可读性
+      final onSurfaceColor = _useCustomWallpaper 
+          ? (Colors.black87) // 强制使用高对比度黑色
+          : scheme.onSurface;
+      final onBackgroundColor = _useCustomWallpaper 
+          ? (Colors.black87) // 强制使用高对比度黑色
+          : scheme.onBackground;
+      
+      return scheme.copyWith(
+        surface: _useCustomWallpaper ? scheme.surface : Colors.white,
+        background: _useCustomWallpaper ? scheme.background : Colors.white,
+        onSurface: onSurfaceColor,
+        onBackground: onBackgroundColor,
+        onPrimary: _useCustomWallpaper ? Colors.black87 : scheme.onPrimary, // 使用高对比度黑色
+        onSecondary: _useCustomWallpaper ? Colors.black87 : scheme.onSecondary, // 使用高对比度黑色
+        surfaceContainerHighest: _useCustomWallpaper 
+            ? scheme.surfaceContainerHighest 
+            : const Color(0xfff8f8f8), // 添加明确的容器色
+        surfaceContainer: _useCustomWallpaper 
+            ? scheme.surfaceContainer 
+            : const Color(0xfffcfcfc),         // 添加明确的容器色
+        // 在毛玻璃模式下提高文字对比度
+        primary: _useGlassEffect ? scheme.primary : scheme.primary,
+        secondary: _useGlassEffect ? scheme.secondary : scheme.secondary,
+      );
+    } else {
+      // 深色主题使用更标准的深色背景
+      // 当使用自定义壁纸时，强制使用高对比度的颜色以确保可读性
+      final onSurfaceColor = _useCustomWallpaper 
+          ? (Colors.white) // 强制使用高对比度白色
+          : scheme.onSurface;
+      final onBackgroundColor = _useCustomWallpaper 
+          ? (Colors.white) // 强制使用高对比度白色
+          : scheme.onBackground;
+      
+      return scheme.copyWith(
+        surface: _useCustomWallpaper ? scheme.surface : const Color(0xFF1D1D1D),
+        background: _useCustomWallpaper ? scheme.background : const Color(0xFF121212),
+        onSurface: onSurfaceColor,
+        onBackground: onBackgroundColor,
+        onPrimary: _useCustomWallpaper ? Colors.white : scheme.onPrimary, // 使用高对比度白色
+        onSecondary: _useCustomWallpaper ? Colors.white : scheme.onSecondary, // 使用高对比度白色
+        surfaceContainerHighest: _useCustomWallpaper 
+            ? scheme.surfaceContainerHighest 
+            : const Color(0xFF292929), // 添加明确的容器色
+        surfaceContainer: _useCustomWallpaper 
+            ? scheme.surfaceContainer 
+            : const Color(0xFF242424),         // 添加明确的容器色
+        // 在毛玻璃模式下提高文字对比度
+        primary: _useGlassEffect ? scheme.primary : scheme.primary,
+        secondary: _useGlassEffect ? scheme.secondary : scheme.secondary,
+      );
+    }
   }
 
   // 你原来可能还有 setBackgroundImagePath 方法，可以删掉或保留兼容

@@ -30,7 +30,7 @@ class FilesAppBar extends StatelessWidget {
             child: Container(
               padding: EdgeInsets.fromLTRB(16.0, topPadding + 8.0, 16.0, 8.0),
               decoration: BoxDecoration(
-                color: colorScheme.surface.withOpacity(0.7), // 使用Material Design的颜色体系，提高可读性
+                color: colorScheme.surfaceContainerHighest.withOpacity(0.7), // 使用Material Design的颜色体系，提高可读性
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(16),
                   bottomRight: Radius.circular(16),

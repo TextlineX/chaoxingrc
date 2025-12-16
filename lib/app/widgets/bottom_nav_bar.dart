@@ -26,7 +26,7 @@ class BottomNavBar extends StatelessWidget {
           decoration: BoxDecoration(
             color: themeProvider.hasCustomWallpaper
                 ? colorScheme.surface.withOpacity(0.3)
-                : colorScheme.primaryContainer.withOpacity(0.8),
+                : colorScheme.surface,
             border: Border(
               top: BorderSide(
                 color: colorScheme.onSurface.withOpacity(0.1),

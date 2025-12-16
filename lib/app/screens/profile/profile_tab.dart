@@ -4,7 +4,7 @@ import '../../providers/user_provider.dart';
 import '../../providers/file_provider.dart';
 import '../../widgets/dynamic_theme_builder.dart';
 import '../../widgets/cached_image_widget.dart';
-import '../../widgets/glass_effect.dart';
+import '../../widgets/conditional_glass_effect.dart';
 import '../../widgets/banner_widget.dart';
 import '../about_screen.dart';
 import '../../widgets/topic_list/topic_list_widget.dart';
@@ -18,7 +18,7 @@ class ProfileTab extends StatelessWidget {
     return Consumer<UserProvider>(
       builder: (context, userProvider, child) {
         // Consumer 的 builder 只能返回一个 Widget，所以我们将整个页面内容包裹在 SingleChildScrollView 中
-        return GlassEffectWithScrollConfiguration(
+        return ConditionalGlassEffect(
           child: SingleChildScrollView(
             padding: const EdgeInsets.only(top: 16.0, left: 16.0, right: 16.0, bottom: 80.0), // 为底部导航栏留出空间
           child: Column(
@@ -48,7 +48,7 @@ class ProfileTab extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return GlassCard(
+    return ConditionalGlassCard(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -275,7 +275,7 @@ class ProfileTab extends StatelessWidget {
 
   /// 构建功能入口列表（切换小组、关于、退出登录）
   Widget _buildActionList(BuildContext context, UserProvider userProvider) {
-    return GlassCard(
+    return ConditionalGlassCard(
       child: Column(
         children: [
           // 条件渲染：只有在有多个小组时才显示"切换小组"选项
@@ -296,10 +296,25 @@ class ProfileTab extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
               Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const DynamicThemeBuilder(
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                      const DynamicThemeBuilder(
                     child: AboutScreen(),
                   ),
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                    const begin = Offset(0.1, 0.0);
+                    const end = Offset.zero;
+                    const curve = Curves.easeInOutCubic;
+
+                    var tween = Tween(begin: begin, end: end)
+                        .chain(CurveTween(curve: curve));
+
+                    return SlideTransition(
+                      position: animation.drive(tween),
+                      child: child,
+                    );
+                  },
+                  transitionDuration: const Duration(milliseconds: 500),
                 ),
               );
             },
@@ -325,7 +340,7 @@ class ProfileTab extends StatelessWidget {
     final circles = userProvider.circles;
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => GlassDialog(
+      builder: (context) => ConditionalGlassDialog(  // 改为条件性对话框
         title: const Text('切换小组'),
         content: SizedBox(
           width: double.maxFinite,
@@ -389,7 +404,7 @@ class ProfileTab extends StatelessWidget {
   void _showLogoutConfirmationDialog(BuildContext context, UserProvider userProvider) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => GlassDialog(
+      builder: (context) => ConditionalGlassDialog(  // 改为条件性对话框
         title: const Text('确认退出'),
         content: const Text('确定要退出登录吗？'),
         actions: [

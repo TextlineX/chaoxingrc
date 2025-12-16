@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/theme_provider.dart';
 
 class GlassEffect extends StatelessWidget {
   final Widget child;
@@ -35,29 +37,58 @@ class GlassEffect extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
 
-    // 默认颜色根据主题变化
-    final defaultColor = isDark 
-        ? Colors.white.withOpacity(0.08) 
-        : Colors.black.withOpacity(0.15);
+    // 根据是否有壁纸调整颜色
+    Color defaultColor;
+    Border defaultBorder;
+    BoxShadow defaultBoxShadow;
+    
+    if (themeProvider.hasCustomWallpaper) {
+      // 当有壁纸时，使用更高对比度的颜色以确保文字可读性
+      defaultColor = isDark 
+          ? Colors.white.withOpacity(0.12) 
+          : Colors.black.withOpacity(0.18);
+          
+      defaultBorder = Border.all(
+        color: isDark 
+            ? Colors.white.withValues(alpha: 0.2) 
+            : Colors.black.withValues(alpha: 0.3),
+        width: 1,
+      );
+      
+      defaultBoxShadow = BoxShadow(
+        color: isDark 
+            ? Colors.black.withValues(alpha: 0.25) 
+            : Colors.black.withValues(alpha: 0.15),
+        blurRadius: 10,
+        spreadRadius: 0,
+        offset: const Offset(0, 4),
+      );
+    } else {
+      // 默认颜色根据主题变化
+      defaultColor = isDark 
+          ? Colors.white.withOpacity(0.08) 
+          : Colors.black.withOpacity(0.15);
 
-    // 默认边框根据主题变化
-    final defaultBorder = Border.all(
-      color: isDark 
-          ? Colors.white.withValues(alpha: 0.15) 
-          : Colors.black.withValues(alpha: 0.25),
-      width: 1,
-    );
+      // 默认边框根据主题变化
+      defaultBorder = Border.all(
+        color: isDark 
+            ? Colors.white.withValues(alpha: 0.15) 
+            : Colors.black.withValues(alpha: 0.25),
+        width: 1,
+      );
 
-    // 默认阴影根据主题变化
-    final defaultBoxShadow = BoxShadow(
-      color: isDark 
-          ? Colors.black.withValues(alpha: 0.2) 
-          : Colors.black.withValues(alpha: 0.1),
-      blurRadius: 10,
-      spreadRadius: 0,
-      offset: const Offset(0, 4),
-    );
+      // 默认阴影根据主题变化
+      defaultBoxShadow = BoxShadow(
+        color: isDark 
+            ? Colors.black.withValues(alpha: 0.2) 
+            : Colors.black.withValues(alpha: 0.1),
+        blurRadius: 10,
+        spreadRadius: 0,
+        offset: const Offset(0, 4),
+      );
+    }
 
     return Container(
       margin: margin,
@@ -112,20 +143,30 @@ class GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassEffect(
-      padding: padding ?? const EdgeInsets.all(16),
-      margin: margin,
-      width: width,
-      height: height,
-      borderRadius: borderRadius,
-      boxShadow: boxShadow,
-      child: onTap != null
-          ? InkWell(
-              onTap: onTap,
-              borderRadius: borderRadius ?? BorderRadius.circular(16),
-              child: child,
-            )
-          : child,
+    return RepaintBoundary(
+      child: Container(
+        margin: margin,
+        width: width,
+        height: height,
+        child: GlassEffect(
+          padding: padding ?? const EdgeInsets.all(16),
+          borderRadius: borderRadius,
+          boxShadow: boxShadow,
+          child: onTap != null
+              ? Material(
+                  type: MaterialType.transparency,
+                  child: InkWell(
+                    onTap: onTap,
+                    borderRadius: borderRadius ?? BorderRadius.circular(16),
+                    child: child,
+                  ),
+                )
+              : Material(
+                  type: MaterialType.transparency,
+                  child: child,
+                ),
+        ),
+      ),
     );
   }
 }
@@ -153,6 +194,32 @@ class GlassListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    
+    // 如果在毛玻璃模式下，增强文字对比度
+    Widget? enhancedTitle = title != null
+        ? DefaultTextStyle(
+            style: theme.textTheme.titleMedium!.copyWith(
+              color: themeProvider.hasCustomWallpaper
+                  ? (theme.brightness == Brightness.dark ? Colors.white : Colors.black87)
+                  : theme.colorScheme.onSurface,
+            ),
+            child: title!,
+          )
+        : title; // 不使用 ! 操作符，直接返回 null
+        
+    Widget? enhancedSubtitle = subtitle != null
+        ? DefaultTextStyle(
+            style: theme.textTheme.bodyMedium!.copyWith(
+              color: themeProvider.hasCustomWallpaper
+                  ? (theme.brightness == Brightness.dark ? Colors.white70 : Colors.black54)
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+            child: subtitle!,
+          )
+        : subtitle; // 不使用 ! 操作符，直接返回 null
+      
     return GlassCard(
       onTap: onTap,
       padding: contentPadding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -167,10 +234,10 @@ class GlassListTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (title != null) title!,
-                if (subtitle != null) ...[
+                if (enhancedTitle != null) enhancedTitle,
+                if (enhancedSubtitle != null) ...[
                   const SizedBox(height: 4),
-                  subtitle!,
+                  enhancedSubtitle,
                 ],
               ],
             ),
@@ -206,6 +273,7 @@ class GlassDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -213,7 +281,9 @@ class GlassDialog extends StatelessWidget {
       shape: shape ?? RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: GlassEffect(
         blur: 15,
-        opacity: isDark ? 0.08 : 0.15,
+        opacity: themeProvider.hasCustomWallpaper 
+            ? (isDark ? 0.15 : 0.20) // 在壁纸上使用更高的不透明度以确保可读性
+            : (isDark ? 0.08 : 0.15),
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -222,14 +292,18 @@ class GlassDialog extends StatelessWidget {
             DefaultTextStyle(
               style: theme.textTheme.headlineSmall!.copyWith(
                 fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurface,
+                color: themeProvider.hasCustomWallpaper
+                    ? (isDark ? Colors.white : Colors.black87) // 在壁纸上使用固定高对比度颜色
+                    : theme.colorScheme.onSurface,
               ),
               child: title,
             ),
             const SizedBox(height: 16),
             DefaultTextStyle(
               style: theme.textTheme.bodyMedium!.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                color: themeProvider.hasCustomWallpaper
+                    ? (isDark ? Colors.white70 : Colors.black54) // 在壁纸上使用固定高对比度颜色
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.8),
               ),
               child: content,
             ),
@@ -268,6 +342,7 @@ class GlassBottomSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
 
     final bottomSheetShape = shape ?? const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -288,7 +363,9 @@ class GlassBottomSheet extends StatelessWidget {
       ),
       child: GlassEffect(
         blur: 15,
-        opacity: isDark ? 0.08 : 0.15,
+        opacity: themeProvider.hasCustomWallpaper
+            ? (isDark ? 0.15 : 0.20) // 在壁纸上使用更高的不透明度以确保可读性
+            : (isDark ? 0.08 : 0.15),
         borderRadius: extractedBorderRadius,
         child: Padding(
           padding: padding ?? const EdgeInsets.all(24),

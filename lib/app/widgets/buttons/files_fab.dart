@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'conditional_glass_effect.dart';
+import '../conditional_glass_effect.dart';
 
 // 定义浮动按钮的显示类型
 enum FabDisplayType { modal, expandable }

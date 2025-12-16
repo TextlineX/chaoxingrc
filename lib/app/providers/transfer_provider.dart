@@ -13,15 +13,28 @@ import '../services/chaoxing/api_client.dart';
 import '../services/chaoxing/file_service.dart';
 import 'package:open_file/open_file.dart';
 import 'package:http_parser/http_parser.dart';
-import '../services/chunked_upload_service.dart';
+import '../services/upload_service.dart';
+import 'permission_provider.dart'; // 添加权限提供者导入
+
+// 定义上传失败回调类型
+typedef UploadFailureCallback = void Function(String fileName, String error);
 
 class TransferProvider extends ChangeNotifier {
   final List<TransferTask> _tasks = [];
   final _uuid = const Uuid();
   FileProvider? _fileProvider;
   UserProvider? _userProvider;
+  PermissionProvider? _permissionProvider; // 添加权限提供者
   Box? _taskBox;
   final Map<String, CancelToken> _cancelTokens = {};
+  
+  // 添加上传失败回调
+  UploadFailureCallback? _uploadFailureCallback;
+  
+  // 设置上传失败回调
+  void setUploadFailureCallback(UploadFailureCallback callback) {
+    _uploadFailureCallback = callback;
+  }
   
   // 添加缺失的变量定义
   static const int _maxConcurrentUploads = 3;
@@ -37,6 +50,11 @@ class TransferProvider extends ChangeNotifier {
     _userProvider?.removeListener(notifyListeners);
     _userProvider = userProvider;
     _userProvider?.addListener(notifyListeners);
+  }
+
+  // 设置权限提供者
+  void setPermissionProvider(PermissionProvider permissionProvider) {
+    _permissionProvider = permissionProvider;
   }
 
   // 初始化方法
@@ -85,6 +103,12 @@ class TransferProvider extends ChangeNotifier {
     required int fileSize,
     String dirId = '-1',
   }) {
+    // 检查上传权限
+    if (_permissionProvider != null && !_permissionProvider!.checkUploadPermission()) {
+      final error = _permissionProvider!.error ?? '您没有上传文件的权限';
+      throw Exception(error);
+    }
+
     final taskId = _uuid.v4();
     final currentBbsid = _userProvider?.bbsid;
 
@@ -265,136 +289,16 @@ class TransferProvider extends ChangeNotifier {
 
   // 处理直接上传
   Future<void> _processDirectUpload(TransferTask task, int fileSize) async {
-    CancelToken? cancelToken;
     try {
-      // 获取上传配置
-      final msgData = await _getUploadConfig();
-
-      final token = msgData['token']?.toString() ?? '';
-      final puid = msgData['puid']?.toString() ?? '';
-      if (token.isEmpty || puid.isEmpty) {
-        throw Exception('上传配置token或puid为空');
-      }
-
-      // 准备上传
-      final file = File(task.filePath);
-      final fileName = task.fileName;
-      final ext = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : '';
-
-      // 设置Content-Type
-      final contentType = _getContentType(ext);
-
-      // 创建Dio实例
-      final dio = _createDioWithThrottling();
-      cancelToken = CancelToken();
-      _cancelTokens[task.id] = cancelToken;
-
-      // 使用流式上传
-      final fileStream = file.openRead();
-      final length = await file.length();
-
-      // 创建multipart request
-      final formData = FormData.fromMap({
-        'file': MultipartFile.fromStream(
-          () => fileStream,
-          length,
-          filename: fileName,
-          contentType: MediaType.parse(contentType),
-        ),
-        '_token': token,
-        'puid': puid,
-        'ut': 'upload',
-        'type': 'file',
-      });
-
-      debugPrint('开始上传: ${task.fileName}');
-
-      // 上传进度回调
-      int lastUpdateTime = DateTime.now().millisecondsSinceEpoch;
-      int lastBytes = 0;
-
-      // 设置更长的超时时间，增强网络稳定性
-      dio.options.connectTimeout = const Duration(seconds: 30);
-      dio.options.sendTimeout = const Duration(minutes: 5);
-      dio.options.receiveTimeout = const Duration(minutes: 5);
-      
-      late Response response;
-      int retryCount = 0;
-      const maxRetries = 3;
-      
-      // 实现重试机制
-      while (retryCount < maxRetries) {
-        try {
-          response = await dio.post(
-            'https://pan-yz.chaoxing.com/upload',
-            data: formData,
-            cancelToken: cancelToken,
-            onSendProgress: (sent, total) {
-              if (total > 0) {
-                final now = DateTime.now().millisecondsSinceEpoch;
-                final timeDiff = (now - lastUpdateTime) / 1000; // 秒
-                if (timeDiff > 0) {
-                  final bytesDiff = sent - lastBytes;
-                  final speed = bytesDiff / timeDiff; // 字节/秒
-                  lastBytes = sent;
-                  lastUpdateTime = now;
-
-                  _updateTaskStatus(
-                    task.id,
-                    TransferStatus.uploading,
-                    progress: sent / total,
-                    speed: speed,
-                    uploadedBytes: sent,
-                  );
-                }
-              }
-            },
-          );
-          // 如果成功，跳出循环
-          break;
-        } catch (e) {
-          retryCount++;
-          debugPrint('上传尝试 $retryCount 失败: $e');
-          
-          // 如果是取消操作，直接抛出异常
-          if (e is DioException && e.type == DioExceptionType.cancel) {
-            rethrow;
-          }
-          
-          // 如果达到最大重试次数，抛出异常
-          if (retryCount >= maxRetries) {
-            rethrow;
-          }
-          
-          // 等待一段时间再重试
-          await Future.delayed(Duration(seconds: 2 * retryCount));
-        }
-      }
-
-      // 处理上传响应
-      await _handleUploadResponse(response, task);
-
-    } catch (e) {
-      _handleUploadError(task, e, cancelToken);
-      rethrow;
-    } finally {
-      _cancelTokens.remove(task.id);
-      _processUploadQueue(); // 处理下一个任务
-    }
-  }
-
-  // 处理分块上传
-  Future<void> _processChunkedUpload(TransferTask task, int fileSize) async {
-    try {
-      final chunkedUploadService = ChunkedUploadService();
-      await chunkedUploadService.init();
+      final uploadService = UploadService();
+      await uploadService.init();
 
       final cancelToken = CancelToken();
       _cancelTokens[task.id] = cancelToken;
 
-      debugPrint('开始分块上传: ${task.fileName}');
+      debugPrint('开始直接上传: ${task.fileName}');
       
-      await chunkedUploadService.uploadFileInChunks(
+      final uploadResponse = await uploadService.uploadFile(
         task.filePath,
         dirId: task.dirId,
         onProgress: (progress) {
@@ -408,15 +312,23 @@ class TransferProvider extends ChangeNotifier {
         task: task,
       );
 
-      // 上传完成，需要将文件添加到资源列表
-      try {
-        await _addResourceToList(task, {
-          'objectId': task.id, // 这里应该使用实际的objectId，但从日志看分块上传可能需要特殊处理
-          'data': {},
-        });
-      } catch (e) {
-        debugPrint('添加资源到列表失败: $e');
-        // 即使添加资源列表失败，也认为上传成功
+      debugPrint('直接上传完成，响应数据: $uploadResponse');
+      
+      // 从上传响应中提取objectId并添加资源到列表
+      final objectId = _extractObjectId(uploadResponse);
+      if (objectId != null) {
+        debugPrint('从上传响应中提取到objectId: $objectId');
+        try {
+          await _addResourceToList(task, {
+            'objectId': objectId,
+            'data': uploadResponse['data'] ?? {},
+          });
+        } catch (e) {
+          debugPrint('添加资源到列表失败: $e');
+          // 即使添加资源列表失败，也认为上传成功
+        }
+      } else {
+        debugPrint('未能从上传响应中提取到objectId');
       }
 
       // 上传完成
@@ -430,6 +342,76 @@ class TransferProvider extends ChangeNotifier {
       // 刷新文件列表
       if (_fileProvider != null) {
         await _fileProvider!.loadFiles(forceRefresh: true);
+        debugPrint('文件列表已刷新');
+      }
+
+    } catch (e) {
+      if (e is! DioException || e.type != DioExceptionType.cancel) {
+        _handleUploadError(task, e, _cancelTokens[task.id]);
+      }
+      rethrow;
+    } finally {
+      _cancelTokens.remove(task.id);
+      _processUploadQueue(); // 处理下一个任务
+    }
+  }
+
+  // 处理分块上传
+  Future<void> _processChunkedUpload(TransferTask task, int fileSize) async {
+    try {
+      final uploadService = UploadService();
+      await uploadService.init();
+
+      final cancelToken = CancelToken();
+      _cancelTokens[task.id] = cancelToken;
+
+      debugPrint('开始分块上传: ${task.fileName}');
+      
+      final uploadResponse = await uploadService.uploadFile(
+        task.filePath,
+        dirId: task.dirId,
+        onProgress: (progress) {
+          _updateTaskStatus(
+            task.id,
+            TransferStatus.uploading,
+            progress: progress,
+            uploadedBytes: (progress * task.totalSize).toInt(),
+          );
+        },
+        task: task,
+      );
+
+      debugPrint('分块上传完成，响应数据: $uploadResponse');
+      
+      // 从上传响应中提取objectId并添加资源到列表
+      final objectId = _extractObjectId(uploadResponse);
+      if (objectId != null) {
+        debugPrint('从上传响应中提取到objectId: $objectId');
+        try {
+          await _addResourceToList(task, {
+            'objectId': objectId,
+            'data': uploadResponse['data'] ?? {},
+          });
+        } catch (e) {
+          debugPrint('添加资源到列表失败: $e');
+          // 即使添加资源列表失败，也认为上传成功
+        }
+      } else {
+        debugPrint('未能从上传响应中提取到objectId');
+      }
+
+      // 上传完成
+      _updateTaskStatus(
+        task.id,
+        TransferStatus.completed,
+        progress: 1.0,
+        uploadedBytes: task.totalSize,
+      );
+
+      // 刷新文件列表
+      if (_fileProvider != null) {
+        await _fileProvider!.loadFiles(forceRefresh: true);
+        debugPrint('文件列表已刷新');
       }
 
     } catch (e) {
@@ -502,6 +484,8 @@ class TransferProvider extends ChangeNotifier {
     final msg = uploadData['msg']?.toString().toLowerCase();
     final objectId = uploadData['objectId'];
 
+    debugPrint('解析的上传结果 - result: $result, status: $status, msg: $msg, objectId: $objectId');
+
     // 判断是否上传成功
     final isSuccess = (result == true || result == 1) ||
         (status == true) ||
@@ -510,15 +494,23 @@ class TransferProvider extends ChangeNotifier {
 
     if (!isSuccess) {
       final errorMsg = uploadData['msg']?.toString() ?? '上传失败';
+      debugPrint('上传失败: $errorMsg');
       throw Exception(errorMsg);
     }
+
+    debugPrint('上传成功，开始添加资源到列表');
 
     // 上传成功，需要将文件添加到资源列表
     try {
       await _addResourceToList(task, uploadData);
     } catch (e) {
       debugPrint('添加资源到列表失败: $e');
-      // 即使添加资源列表失败，也认为上传成功
+      // 如果是权限错误，则整个上传过程失败
+      if (e.toString().contains('权限不足')) {
+        _handleUploadError(task, e, null);
+        rethrow; // 抛出异常，表示上传失败
+      }
+      // 对于其他非权限错误，仍然认为上传成功
     }
 
     // 上传成功，更新任务状态
@@ -541,9 +533,26 @@ class TransferProvider extends ChangeNotifier {
       final apiClient = ChaoxingApiClient();
       await apiClient.init();
       
+      // 从上传数据中获取objectId
+      String? objectId;
+      if (uploadData['data'] != null && uploadData['data'] is Map<String, dynamic>) {
+        final data = uploadData['data'] as Map<String, dynamic>;
+        objectId = data['objectId']?.toString();
+      }
+      if (objectId == null) {
+        objectId = uploadData['objectId']?.toString();
+      }
+      
+      if (objectId == null) {
+        debugPrint('无法从上传数据中获取objectId');
+        return;
+      }
+      
+      debugPrint('准备添加资源到列表，objectId: $objectId, 目录ID: ${task.dirId}');
+      
       // 构造添加资源的参数
       final uploadDoneParam = {
-        'key': uploadData['objectId'],
+        'key': objectId,
         'cataid': '100000019',
         'param': uploadData['data'] ?? {},
       };
@@ -583,6 +592,11 @@ class TransferProvider extends ChangeNotifier {
       if (result != 1) {
         final errorMsg = responseData is Map ? responseData['msg']?.toString() : '添加资源失败';
         debugPrint('添加资源失败: $errorMsg');
+        
+        // 如果是权限相关的错误，抛出特殊异常
+        if (errorMsg != null && errorMsg.contains('暂无权限')) {
+          throw Exception('权限不足：$errorMsg');
+        }
       }
     } catch (e) {
       debugPrint('添加资源到列表异常: $e');
@@ -624,12 +638,18 @@ class TransferProvider extends ChangeNotifier {
       // 特殊处理服务器返回的特定错误消息
       if (error.contains('不能识别的文件类型')) {
         errorMsg = '文件类型不被支持，请尝试压缩为zip格式后再上传';
+      } else if (error.contains('暂无权限')) {
+        // 特殊处理权限错误
+        errorMsg = '权限不足：${error.contains("请前往\"学习通app-我的-头像-绑定单位\"完成绑定操作") ? "您需要在学习通APP中完成单位绑定才能上传文件" : error}';
       }
     } else if (error is Map) {
       errorMsg = error['message']?.toString() ?? '上传失败';
       // 特殊处理服务器返回的特定错误消息
       if (errorMsg.contains('不能识别的文件类型')) {
         errorMsg = '文件类型不被支持，请尝试压缩为zip格式后再上传';
+      } else if (errorMsg.contains('暂无权限')) {
+        // 特殊处理权限错误
+        errorMsg = '权限不足：${errorMsg.contains("请前往\"学习通app-我的-头像-绑定单位\"完成绑定操作") ? "您需要在学习通APP中完成单位绑定才能上传文件" : errorMsg}';
       }
     }
 
@@ -638,6 +658,11 @@ class TransferProvider extends ChangeNotifier {
       TransferStatus.failed,
       error: errorMsg,
     );
+
+    // 如果是权限错误，通知用户
+    if (errorMsg.contains('权限不足') && _uploadFailureCallback != null) {
+      _uploadFailureCallback!(task.fileName, errorMsg);
+    }
 
     if (cancelToken != null && !cancelToken.isCancelled) {
       cancelToken.cancel();
@@ -781,6 +806,40 @@ class TransferProvider extends ChangeNotifier {
     }
   }
 
+  // 从上传响应中提取objectId
+  String? _extractObjectId(Map<String, dynamic> response) {
+    try {
+      // 尝试从不同可能的位置提取objectId
+      if (response['data'] != null) {
+        if (response['data'] is Map<String, dynamic>) {
+          final data = response['data'] as Map<String, dynamic>;
+          if (data['objectId'] != null) {
+            return data['objectId'].toString();
+          }
+          if (data['key'] != null) {
+            return data['key'].toString();
+          }
+        }
+      }
+      
+      if (response['objectId'] != null) {
+        return response['objectId'].toString();
+      }
+      
+      if (response['result'] != null && response['result'] is Map<String, dynamic>) {
+        final result = response['result'] as Map<String, dynamic>;
+        if (result['objectId'] != null) {
+          return result['objectId'].toString();
+        }
+      }
+      
+      return null;
+    } catch (e) {
+      debugPrint('提取objectId时出错: $e');
+      return null;
+    }
+  }
+
   // 处理上传队列
   void _processUploadQueue() {
     final runningUploads = _tasks
@@ -817,7 +876,16 @@ class TransferProvider extends ChangeNotifier {
       orElse: () => throw Exception('Task not found or not paused'),
     );
 
-    _updateTaskStatus(taskId, TransferStatus.pending);
+    final index = _tasks.indexOf(task);
+    if (index != -1) {
+      _tasks[index] = task.copyWith(
+        status: TransferStatus.pending,
+        error: null, // Reset error if any
+      );
+      _saveTasks();
+      notifyListeners();
+    }
+
     if (task.type == TransferType.upload) {
       _processUploadQueue();
     } else {
@@ -844,7 +912,23 @@ class TransferProvider extends ChangeNotifier {
       orElse: () => throw Exception('Task not found or not failed'),
     );
 
-    _updateTaskStatus(taskId, TransferStatus.pending, error: null);
+    // 在重试前重置任务的关键属性
+    final index = _tasks.indexOf(task);
+    if (index != -1) {
+      _tasks[index] = task.copyWith(
+        status: TransferStatus.pending,
+        progress: 0.0,
+        speed: 0,
+        uploadedBytes: 0,
+        downloadedBytes: 0,
+        errorMessage: null,
+        completedAt: null,
+        error: null, // Also reset alias
+      );
+      _saveTasks();
+      notifyListeners();
+    }
+
     if (task.type == TransferType.upload) {
       _processUploadQueue();
     } else {
@@ -911,6 +995,9 @@ class TransferProvider extends ChangeNotifier {
       entry.value.cancel('App disposed');
     }
     _cancelTokens.clear();
+    
+    // 清空回调以防止内存泄漏
+    _uploadFailureCallback = null;
 
     super.dispose();
   }

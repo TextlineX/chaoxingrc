@@ -5,11 +5,11 @@ import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
 import '../services/download_path_service.dart';
 import 'package:file_picker/file_picker.dart';
-import './debug_control_screen.dart';
+
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
-import '../widgets/glass_effect.dart';
+import '../widgets/conditional_glass_effect.dart';
 
 // 简单的颜色选择器 Dialog
 class ColorPickerDialog extends StatelessWidget {
@@ -107,12 +107,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showThemeDialog(BuildContext context, ThemeProvider themeProvider) {
     showDialog(
       context: context,
-      builder: (context) => GlassDialog(
+      builder: (context) => ConditionalGlassDialog(
         title: const Text('选择主题模式'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            GlassListTile(
+            ConditionalGlassListTile(
               title: const Text('跟随系统'),
               trailing: Radio<ThemeMode>(
                 value: ThemeMode.system,
@@ -128,7 +128,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
             const SizedBox(height: 8),
-            GlassListTile(
+            ConditionalGlassListTile(
               title: const Text('浅色模式'),
               trailing: Radio<ThemeMode>(
                 value: ThemeMode.light,
@@ -144,7 +144,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
             const SizedBox(height: 8),
-            GlassListTile(
+            ConditionalGlassListTile(
               title: const Text('深色模式'),
               trailing: Radio<ThemeMode>(
                 value: ThemeMode.dark,
@@ -175,7 +175,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Use existing ColorPicker widget or implementation
     showDialog(
         context: context,
-        builder: (context) => GlassDialog(
+        builder: (context) => ConditionalGlassDialog(
               title: const Text('选择主题颜色'),
               content: ColorPickerDialog(
                 initialColor: themeProvider.seedColor,
@@ -198,34 +198,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context, themeProvider, child) {
         return Scaffold(
           backgroundColor: themeProvider.hasCustomWallpaper
-              ? Colors.transparent
-              : theme.colorScheme.primaryContainer,
+              ? (theme.brightness == Brightness.dark
+                  ? const Color(0xFF121212) // 深色背景，确保在壁纸上有一致性
+                  : Colors.white) // 浅色背景，确保在壁纸上有一致性
+              : theme.colorScheme.surface,
           appBar: AppBar(
             backgroundColor: themeProvider.hasCustomWallpaper
                 ? Colors.transparent
-                : theme.colorScheme.primaryContainer,
+                : theme.colorScheme.surface,
             title: const Text('设置'),
-            flexibleSpace: ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  color: themeProvider.hasCustomWallpaper
-                      ? theme.brightness == Brightness.dark 
+            foregroundColor: themeProvider.hasCustomWallpaper
+                ? (theme.brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black87) // 确保在壁纸上的文本可见
+                : theme.colorScheme.onSurface,
+            flexibleSpace: themeProvider.hasCustomWallpaper
+              ? ClipRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      color: theme.brightness == Brightness.dark 
                           ? Colors.black.withValues(alpha: 0.2) 
-                          : Colors.white.withValues(alpha: 0.1)
-                      : theme.colorScheme.primary.withValues(alpha: 0.2),
-                ),
-              ),
-            ),
+                          : Colors.white.withValues(alpha: 0.1),
+                    ),
+                  ),
+                )
+              : null,
           ),
           body: ListView(
             padding: const EdgeInsets.all(16.0),
             children: [
               // 下载设置
-              GlassCard(
+              ConditionalGlassCard(
                 child: Column(
                   children: [
-                    GlassListTile(
+                    ConditionalGlassListTile(
                       title: const Text('下载路径'),
                       subtitle: Text(_currentDownloadPath.isNotEmpty
                           ? _currentDownloadPath
@@ -244,10 +251,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // 主题设置
               Consumer<ThemeProvider>(
                 builder: (context, themeProvider, child) {
-                  return GlassCard(
+                  return ConditionalGlassCard(
                     child: Column(
                       children: [
-                        GlassListTile(
+                        ConditionalGlassListTile(
                           title: const Text('主题模式'),
                           subtitle:
                               Text(_getThemeModeText(themeProvider.themeMode)),
@@ -257,7 +264,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           },
                         ),
                         const SizedBox(height: 8),
-                        GlassListTile(
+                        ConditionalGlassListTile(
                           title: const Text('主题颜色'),
                           trailing: Container(
                             width: 24,
@@ -272,7 +279,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           },
                         ),
                         const SizedBox(height: 8),
-                        GlassListTile(
+                        ConditionalGlassListTile(
                           title: const Text('动态颜色'),
                           subtitle: const Text('使用系统动态颜色'),
                           trailing: Switch(
@@ -286,7 +293,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           },
                         ),
                         const SizedBox(height: 8),
-                        GlassListTile(
+                        ConditionalGlassListTile(
+                          title: const Text('毛玻璃效果'),
+                          subtitle: const Text('为界面元素添加半透明模糊效果'),
+                          trailing: Switch(
+                            value: themeProvider.useGlassEffect,
+                            onChanged: (value) {
+                              themeProvider.setUseGlassEffect(value);
+                            },
+                          ),
+                          onTap: () {
+                            themeProvider.setUseGlassEffect(!themeProvider.useGlassEffect);
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        ConditionalGlassListTile(
                           leading: themeProvider.backgroundImagePath.isNotEmpty
                               ? CircleAvatar(
                                   backgroundImage: FileImage(File(themeProvider.backgroundImagePath)),
@@ -326,7 +347,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         if (themeProvider.backgroundImagePath.isNotEmpty) ...[
                           const SizedBox(height: 8),
-                          GlassListTile(
+                          ConditionalGlassListTile(
                             title: const Text('移除自定义壁纸'),
                             trailing: const Icon(Icons.delete_outline),
                             onTap: () async {
@@ -347,89 +368,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               const SizedBox(height: 16),
 
-              // 账户设置
-              Consumer<UserProvider>(
-                builder: (context, userProvider, child) {
-                  return GlassCard(
-                    child: Column(
-                      children: [
-                        GlassListTile(
-                          title: const Text('开发者模式'),
-                          subtitle: const Text('开启后可以查看调试信息'),
-                          trailing: Switch(
-                            value: userProvider.isDeveloperMode,
-                            onChanged: (value) {
-                              userProvider.toggleDeveloperMode();
-                            },
-                          ),
-                          onTap: () {
-                            userProvider.toggleDeveloperMode();
-                          },
-                        ),
-                        // 只在开发者模式下显示调试控制按钮
-                        if (userProvider.isDeveloperMode) ...[
-                          const SizedBox(height: 8),
-                          GlassListTile(
-                            title: const Text('调试输出控制'),
-                            subtitle: const Text('管理各类调试输出的开关'),
-                            leading: const Icon(Icons.bug_report_outlined),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const DebugControlScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                        const SizedBox(height: 8),
-                        GlassListTile(
-                          title: const Text('设置BBSID'),
-                          subtitle: Text(
-                            userProvider.bbsid.isNotEmpty
-                                ? '当前：${userProvider.bbsid}'
-                                : '未设置（进入小组URL中的bbsid参数）',
-                          ),
-                          leading: const Icon(Icons.group_work),
-                          trailing: const Icon(Icons.edit),
-                          onTap: () async {
-                            final controller =
-                                TextEditingController(text: userProvider.bbsid);
-                            final result = await showDialog<String>(
-                              context: context,
-                              builder: (context) => GlassDialog(
-                                title: const Text('设置BBSID'),
-                                content: TextField(
-                                  controller: controller,
-                                  decoration: const InputDecoration(
-                                    hintText: '请输入BBSID',
-                                  ),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text('取消'),
-                                  ),
-                                  FilledButton(
-                                    onPressed: () => Navigator.pop(
-                                        context, controller.text.trim()),
-                                    child: const Text('保存'),
-                                  ),
-                                ],
-                              ),
-                            );
-                            if (result != null && result.isNotEmpty) {
-                              await userProvider.setBbsid(result);
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+
             ],
           ),
         );

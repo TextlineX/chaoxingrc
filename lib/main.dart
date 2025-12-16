@@ -1,6 +1,8 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'dart:io';
 import 'package:provider/provider.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 
@@ -96,7 +98,13 @@ Future<void> main() async {
   // 初始化 Hive
   await Hive.initFlutter();
   // Ensure adapters are registered before opening boxes
-  Hive.registerAdapter(TransferTaskAdapter());
+  // 使用 try-catch 防止适配器重复注册错误
+  try {
+    Hive.registerAdapter(TransferTaskAdapter());
+  } catch (e) {
+    debugPrint('适配器可能已经注册: $e');
+    // 如果适配器已注册，继续执行
+  }
   try {
     await Hive.openBox('transfer_tasks');
   } catch (e) {
@@ -112,9 +120,19 @@ Future<void> main() async {
     await StorageService.init();
     debugPrint('StorageService初始化完成');
 
-    // 初始化flutter_downloader
-    await FlutterDownloader.initialize(debug: true);
-    debugPrint('FlutterDownloader初始化完成');
+    // 初始化flutter_downloader - 仅在支持的平台
+    try {
+      // 检查当前平台是否支持 flutter_downloader
+      if (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS) {
+        await FlutterDownloader.initialize(debug: true);
+        debugPrint('FlutterDownloader初始化完成');
+      } else {
+        debugPrint('当前平台不支持 FlutterDownloader，跳过初始化');
+      }
+    } catch (e) {
+      debugPrint('FlutterDownloader初始化失败: $e');
+      debugPrint('这可能是正常的，因为该插件可能不支持当前平台');
+    }
 
     // 验证关键服务是否正确初始化
     if (!await _validateInitialization()) {
@@ -165,6 +183,7 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: GlobalProviders.userProvider),
         ChangeNotifierProvider.value(value: GlobalProviders.fileProvider),
         ChangeNotifierProvider.value(value: GlobalProviders.transferProvider),
+        ChangeNotifierProvider.value(value: GlobalProviders.permissionProvider),
       ],
       child: const App(),
     ),

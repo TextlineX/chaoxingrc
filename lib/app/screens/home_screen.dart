@@ -97,13 +97,13 @@ class _HomeScreenState extends State<HomeScreen>
               Scaffold(
                 backgroundColor: themeProvider.hasCustomWallpaper 
                     ? Colors.transparent 
-                    : Theme.of(context).colorScheme.primaryContainer,
+                    : Theme.of(context).colorScheme.surface, // 使用表面色作为背景色
                 resizeToAvoidBottomInset: false,
                 extendBody: true,
                 appBar: AppBar(
                   backgroundColor: themeProvider.hasCustomWallpaper 
                       ? Colors.transparent 
-                      : Theme.of(context).colorScheme.primaryContainer,
+                      : Theme.of(context).colorScheme.surface,
                   elevation: 0,
                   flexibleSpace: ClipRect(
                     child: BackdropFilter(
@@ -111,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen>
                       child: Container(
                         color: themeProvider.hasCustomWallpaper
                             ? Colors.black.withValues(alpha: 0.15)
-                            : Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                            : Colors.transparent,
                         padding: EdgeInsets.only(
                           top: MediaQuery.of(context).padding.top,
                         ),
@@ -138,10 +138,10 @@ class _HomeScreenState extends State<HomeScreen>
                                 child: SettingsScreen()),
                             transitionsBuilder:
                                 (context, animation, secondaryAnimation, child) {
-                              // 使用 Curves.easeOutCubic 模拟更快速的抛物线效果
-                              const begin = Offset(1.0, 0.0);
+                              // 使用更平滑的动画曲线和更长的持续时间
+                              const begin = Offset(0.1, 0.0);
                               const end = Offset.zero;
-                              const curve = Curves.easeOutCubic;
+                              const curve = Curves.easeInOutCubic;
 
                               var tween = Tween(begin: begin, end: end)
                                   .chain(CurveTween(curve: curve));
@@ -152,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen>
                               );
                             },
                             transitionDuration:
-                            const Duration(milliseconds: 300),
+                            const Duration(milliseconds: 500),
                           ),
                         );
                       },
@@ -182,11 +182,11 @@ class _HomeScreenState extends State<HomeScreen>
 
                       _isNavigating = true;
 
-                      // 1. 触发页面滑动动画 (抛物线效果)
+                      // 1. 触发页面滑动动画 (更长持续时间和平滑曲线)
                       _pageController!.animateToPage(
                         index,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeOutCubic,
+                        duration: const Duration(milliseconds: 500),  // 增加动画持续时间
+                        curve: Curves.easeInOutCubic,  // 使用更平滑的动画曲线
                       ).then((_) {
                         // 2. 动画完成后，更新 _currentIndex，触发底部导航栏的动画。
                         if (mounted) {
@@ -224,12 +224,14 @@ class _HomeScreenState extends State<HomeScreen>
         double visibility = 1.0;
         if (_pageController!.hasClients) {
           final pagePosition = _getPagePosition(index);
-          visibility = 1.0 - (pagePosition.abs() * 0.3).clamp(0.0, 0.5);
+          // 减少透明度变化幅度，使过渡更平滑
+          visibility = 1.0 - (pagePosition.abs() * 0.2).clamp(0.0, 0.3);
         }
 
         return Opacity(
           opacity: isSelected ? 1.0 : visibility,
           child: Transform.translate(
+            // 增加移动距离，使页面切换更有层次感
             offset: Offset(_getPageOffset(index), 0),
             child: child,
           ),
@@ -240,14 +242,14 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   double _getPagePosition(int index) {
-    if (!_pageController!.hasClients) return 0.0;
+    if (!_pageController!.hasClients || _pageController!.page == null) return 0.0;
     return (index - _pageController!.page!).abs();
   }
 
   double _getPageOffset(int index) {
-    if (!_pageController!.hasClients) return 0.0;
+    if (!_pageController!.hasClients || _pageController!.page == null) return 0.0;
     final position = _pageController!.page! - index;
-    return position * 20.0;
+    return position * 40.0;  // 增加移动距离，使动画更明显
   }
 
   String _getAppBarTitle(int index) {

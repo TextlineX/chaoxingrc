@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'glass_effect.dart';
+import 'conditional_glass_effect.dart';
 import '../services/chaoxing/banner_service.dart';
 import '../services/chaoxing/api_client.dart';
 import '../providers/user_provider.dart';
@@ -109,7 +109,7 @@ class _BannerWidgetState extends State<BannerWidget> {
         }
 
         // --- 关键改动：使用固定高度的容器，不再使用 AspectRatio ---
-        return GlassEffect(
+        return ConditionalGlassEffect(
           blur: 10,
           opacity: isDark ? 0.05 : 0.1,
           margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),

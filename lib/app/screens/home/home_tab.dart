@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../widgets/glass_effect.dart';
+import 'package:provider/provider.dart';
+import '../../widgets/conditional_glass_effect.dart';
+import '../../providers/theme_provider.dart';
 import '../../widgets/topic_list/topic_list_widget.dart';
 import '../../providers/user_provider.dart';
-import 'package:provider/provider.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -31,12 +32,18 @@ class _HomeTabState extends State<HomeTab> {
     }
     _lastBbsid = bbsId;
 
-    return Column(
-      children: [
-        // 标题栏
-        GlassCard(
-          margin: const EdgeInsets.all(16.0),
-          padding: const EdgeInsets.all(16.0),
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ConditionalGlassEffect(
+      opacity: themeProvider.hasCustomWallpaper
+          ? (isDark ? 0.05 : 0.1)
+          : 0.0,
+      child: Column(
+        children: [
+          // 标题栏
+          ConditionalGlassCard(
+            margin: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
               const Icon(Icons.dynamic_feed),
@@ -83,6 +90,7 @@ class _HomeTabState extends State<HomeTab> {
           ),
         ),
       ],
+      ),
     );
   }
 }

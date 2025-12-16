@@ -80,6 +80,17 @@ class ChaoxingFileService {
       return allItems;
     } catch (e) {
       debugPrint('获取文件列表失败: $e');
+      
+      // 如果是权限相关的错误，提供更友好的提示
+      final errorMsg = e.toString();
+      if (errorMsg.contains('暂无权限') || errorMsg.contains('权限不足')) {
+        if (errorMsg.contains('请前往"学习通app-我的-头像-绑定单位"完成绑定操作')) {
+          throw Exception('权限不足：您需要在学习通APP中完成单位绑定才能访问此功能');
+        } else {
+          throw Exception('权限不足：请联系小组管理员获取相应权限');
+        }
+      }
+      
       rethrow;
     }
   }
@@ -232,6 +243,17 @@ class ChaoxingFileService {
       throw Exception('服务器未返回有效的下载地址');
     } catch (e) {
       debugPrint('获取下载链接失败: $e');
+      
+      // 如果是权限相关的错误，提供更友好的提示
+      final errorMsg = e.toString();
+      if (errorMsg.contains('暂无权限') || errorMsg.contains('权限不足')) {
+        if (errorMsg.contains('请前往"学习通app-我的-头像-绑定单位"完成绑定操作')) {
+          throw Exception('权限不足：您需要在学习通APP中完成单位绑定才能下载文件');
+        } else {
+          throw Exception('权限不足：无法下载此文件');
+        }
+      }
+      
       rethrow;
     }
   }
@@ -247,9 +269,27 @@ class ChaoxingFileService {
       if (response.data != null && response.data['result'] == 1) {
         return true;
       }
-      throw Exception(response.data['msg'] ?? '创建文件夹失败');
+      
+      // 检查具体错误类型
+      final errorMsg = response.data['msg'] ?? '创建文件夹失败';
+      if (errorMsg.toString().contains('暂无权限')) {
+        throw Exception('权限不足：无法在此位置创建文件夹');
+      }
+      
+      throw Exception(errorMsg);
     } catch (e) {
       debugPrint('创建文件夹失败: $e');
+      
+      // 如果是权限相关的错误，提供更友好的提示
+      final errorMsg = e.toString();
+      if (errorMsg.contains('暂无权限') || errorMsg.contains('权限不足')) {
+        if (errorMsg.contains('请前往"学习通app-我的-头像-绑定单位"完成绑定操作')) {
+          throw Exception('权限不足：您需要在学习通APP中完成单位绑定才能创建文件夹');
+        } else {
+          throw Exception('权限不足：无法在此位置创建文件夹');
+        }
+      }
+      
       rethrow;
     }
   }
@@ -268,6 +308,17 @@ class ChaoxingFileService {
       throw Exception(response.data['msg'] ?? '删除失败');
     } catch (e) {
       debugPrint('删除失败: $e');
+      
+      // 如果是权限相关的错误，提供更友好的提示
+      final errorMsg = e.toString();
+      if (errorMsg.contains('暂无权限') || errorMsg.contains('权限不足')) {
+        if (errorMsg.contains('请前往"学习通app-我的-头像-绑定单位"完成绑定操作')) {
+          throw Exception('权限不足：您需要在学习通APP中完成单位绑定才能删除文件');
+        } else {
+          throw Exception('权限不足：无法删除此文件');
+        }
+      }
+      
       rethrow;
     }
   }
@@ -286,6 +337,17 @@ class ChaoxingFileService {
       throw Exception(response.data['msg'] ?? '重命名失败');
     } catch (e) {
       debugPrint('重命名失败: $e');
+      
+      // 如果是权限相关的错误，提供更友好的提示
+      final errorMsg = e.toString();
+      if (errorMsg.contains('暂无权限') || errorMsg.contains('权限不足')) {
+        if (errorMsg.contains('请前往"学习通app-我的-头像-绑定单位"完成绑定操作')) {
+          throw Exception('权限不足：您需要在学习通APP中完成单位绑定才能重命名文件夹');
+        } else {
+          throw Exception('权限不足：无法重命名此文件夹');
+        }
+      }
+      
       rethrow;
     }
   }
@@ -305,6 +367,17 @@ class ChaoxingFileService {
       throw Exception(response.data['msg'] ?? '移动失败');
     } catch (e) {
       debugPrint('移动失败: $e');
+      
+      // 如果是权限相关的错误，提供更友好的提示
+      final errorMsg = e.toString();
+      if (errorMsg.contains('暂无权限') || errorMsg.contains('权限不足')) {
+        if (errorMsg.contains('请前往"学习通app-我的-头像-绑定单位"完成绑定操作')) {
+          throw Exception('权限不足：您需要在学习通APP中完成单位绑定才能移动文件');
+        } else {
+          throw Exception('权限不足：无法移动此文件');
+        }
+      }
+      
       rethrow;
     }
   }
@@ -324,6 +397,17 @@ class ChaoxingFileService {
       throw Exception(response.data['msg'] ?? '批量移动失败');
     } catch (e) {
       debugPrint('批量移动失败: $e');
+      
+      // 如果是权限相关的错误，提供更友好的提示
+      final errorMsg = e.toString();
+      if (errorMsg.contains('暂无权限') || errorMsg.contains('权限不足')) {
+        if (errorMsg.contains('请前往"学习通app-我的-头像-绑定单位"完成绑定操作')) {
+          throw Exception('权限不足：您需要在学习通APP中完成单位绑定才能批量移动文件');
+        } else {
+          throw Exception('权限不足：无法批量移动这些文件');
+        }
+      }
+      
       rethrow;
     }
   }
@@ -342,6 +426,17 @@ class ChaoxingFileService {
       throw Exception(response.data['msg'] ?? '批量删除失败');
     } catch (e) {
       debugPrint('批量删除失败: $e');
+      
+      // 如果是权限相关的错误，提供更友好的提示
+      final errorMsg = e.toString();
+      if (errorMsg.contains('暂无权限') || errorMsg.contains('权限不足')) {
+        if (errorMsg.contains('请前往"学习通app-我的-头像-绑定单位"完成绑定操作')) {
+          throw Exception('权限不足：您需要在学习通APP中完成单位绑定才能批量删除文件');
+        } else {
+          throw Exception('权限不足：无法批量删除这些文件');
+        }
+      }
+      
       rethrow;
     }
   }

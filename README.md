@@ -41,41 +41,6 @@
 - [x] 主题设置（浅色/深色/跟随系统、动态色）
 - [x] 自定义壁纸/液态玻璃风格（可选）
 
-## 运行
-
-本项目使用 `flavor` 区分测试版与正式版：
-
-```bash
-flutter pub get
-
-# 开发测试版本
-flutter run --debug --flavor beta
-
-# 生产版本
-flutter run --release --flavor prod
-```
-
-## 构建
-
-```bash
-# Beta APK
-flutter build apk --flavor beta --release
-
-# 正式版 APK + AAB
-flutter build apk --flavor prod --release
-flutter build appbundle --flavor prod --release
-```
-
-## CI/CD
-
-工作流：`.github/workflows/android_build.yml`
-
-- push 到 `master` / `beta` 触发构建
-- PR 到 `master` / `beta` 触发构建
-- 支持手动触发（workflow_dispatch）
-
-注意：当前 workflow 使用了 `paths-ignore`，仅修改 `*.md` 或 `docs/**` 可能不会触发构建。
-
 ## 声明
 
 本项目仅用于学习与研究，请勿用于任何违反服务条款的用途。

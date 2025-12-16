@@ -259,7 +259,12 @@ class _LoginScreenState extends State<LoginScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SizedBox(height: 20),
-          const Icon(Icons.cloud_circle, size: 80, color: Colors.blue),
+          Image.asset(
+            'assets/icon/app_icon.webp',
+            width: 80,
+            height: 80,
+            fit: BoxFit.contain,
+          ),
           const SizedBox(height: 20),
           const Text(
             '使用超星账号登录',
@@ -270,7 +275,7 @@ class _LoginScreenState extends State<LoginScreen> {
           TextField(
             controller: _usernameController,
             decoration: const InputDecoration(
-              labelText: '手机号 / 学号 / UID',
+              labelText: '请输入手机号或者超星学习通账号',
               prefixIcon: Icon(Icons.person),
               border: OutlineInputBorder(),
             ),

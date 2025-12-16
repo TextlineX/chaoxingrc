@@ -5,7 +5,7 @@ import 'package:chaoxingrc/app/services/chaoxing/api_client.dart';
 import 'package:chaoxingrc/app/widgets/topic_list/topic_item_widget.dart';
 import 'package:chaoxingrc/app/widgets/topic_list/topic_list_empty_widget.dart';
 import 'package:chaoxingrc/app/widgets/topic_list/topic_list_loading_widget.dart';
-import 'package:chaoxingrc/app/widgets/enhanced_glass_effect.dart';
+import 'package:chaoxingrc/app/widgets/conditional_glass_effect.dart';
 import 'package:provider/provider.dart';
 import 'package:chaoxingrc/app/providers/user_provider.dart';
 
@@ -342,7 +342,7 @@ class _TopicListWidgetState extends State<TopicListWidget>
                           else {
                             return Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              child: EnhancedGlassCard(
+                              child: ConditionalGlassCard(
                                 padding: const EdgeInsets.all(16.0),
                                 child: const Center(
                                   child: CircularProgressIndicator(),

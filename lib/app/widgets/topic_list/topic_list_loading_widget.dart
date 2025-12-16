@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../enhanced_glass_effect.dart';
+import '../glass_effect.dart';
 
 class TopicListLoadingWidget extends StatelessWidget {
   const TopicListLoadingWidget({super.key});
@@ -7,7 +7,7 @@ class TopicListLoadingWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: EnhancedGlassCard(
+      child: GlassCard(
         margin: const EdgeInsets.all(16.0),
         padding: const EdgeInsets.all(24.0),
         child: const Column(

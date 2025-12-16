@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/file_provider.dart';
-import 'glass_effect.dart';
+import 'conditional_glass_effect.dart';
 
 class PathNavigator extends StatefulWidget {
   final FileProvider provider;
@@ -71,7 +71,7 @@ class _PathNavigatorState extends State<PathNavigator> {
       return content;
     }
 
-    return GlassEffect(
+    return ConditionalGlassEffect(
       blur: 10,
       opacity: isDark ? 0.05 : 0.1,
       padding: EdgeInsets.zero,
