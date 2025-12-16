@@ -49,18 +49,21 @@ jobs:
         run: flutter pub get
 
       - name: 代码静态分析
-        run: flutter analyze || true  # 分析错误不影响后续构建，仅警告
+        # 使用 || true 确保即使有警告也不会中断构建
+        run: flutter analyze || true
 
       - name: 构建安装包
         run: |
           # 根据当前分支选择构建类型
           if [[ "${{ github.ref_name }}" == "beta" ]]; then
             echo "正在构建 Beta 版本 APK..."
-            flutter build apk --flavor beta --release
+            # 使用 --debug-signing 强制使用 debug 密钥签名，解决 CI 环境签名问题
+            flutter build apk --release --debug-signing
           else
             echo "正在构建正式版本 APK 和 AAB..."
-            flutter build apk --flavor prod --release
-            flutter build appbundle --flavor prod --release
+            # 使用 --debug-signing 强制使用 debug 密钥签名
+            flutter build apk --release --debug-signing
+            flutter build appbundle --release --debug-signing
           fi
 
       - name: 上传所有 APK 文件到 Artifacts
@@ -75,7 +78,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: aab
-          path: build/app/outputs/bundle/prodRelease/app-prod-release.aab
+          path: build/app/outputs/bundle/release/app-release.aab
 
   # 第二阶段：创建 GitHub Release
   release:
@@ -86,7 +89,7 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write                  # 需要写入权限才能创建 Release 和 Tag
-    
+
     steps:
       - name: 检出代码（用于读取 pubspec.yaml）
         uses: actions/checkout@v4
@@ -125,8 +128,8 @@ jobs:
             - 正式版 APK
             - 正式版 AAB（用于上传 Google Play）
           files: |
-            artifacts/apks/app-prod-release.apk
-            artifacts/aab/app-prod-release.aab
+            artifacts/apks/app-release.apk
+            artifacts/aab/app-release.aab
           draft: false
           prerelease: false
           fail_on_unmatched_files: false    # 文件未匹配时不报错
@@ -147,7 +150,7 @@ jobs:
             ### 📦 下载
             - Beta 版 APK
           files: |
-            artifacts/apks/app-beta-release.apk
+            artifacts/apks/app-release.apk
           draft: false
           prerelease: true                  # 标记为预发布版
           fail_on_unmatched_files: false
