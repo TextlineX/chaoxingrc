@@ -28,7 +28,6 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          # 核心修复：开启 Gradle 缓存，极大降低 Connection Refused 概率
           cache: 'gradle'
 
       - name: 配置 Flutter 环境
@@ -36,6 +35,13 @@ jobs:
         with:
           channel: 'stable'
           cache: true
+
+      # --- 关键修复：强制将 Gradle 下载源换成腾讯云镜像，解决 Connection refused ---
+      - name: 修复 Gradle 下载
+        run: |
+          sed -i 's/services.gradle.org\/distributions/mirrors.cloud.tencent.com\/gradle/g' android/gradle/wrapper/gradle-wrapper.properties
+        shell: bash
+      # -----------------------------------------------------------------------
 
       - name: 安装项目依赖
         run: flutter pub get
