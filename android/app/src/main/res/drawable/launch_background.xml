@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
+<!-- 启动页背景的drawable定义，可以自定义颜色或图片 -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 默认白色背景 -->
     <item android:drawable="@android:color/white" />
 
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
+    <!-- 如果您想使用图片作为启动页，可以取消下面代码的注释，
+         并将您的图片放入 res/mipmap/ 目录下 -->
+    <!--
+    <item>
         <bitmap
             android:gravity="center"
             android:src="@mipmap/launch_image" />
-    </item> -->
+    </item>
+    -->
 </layer-list>

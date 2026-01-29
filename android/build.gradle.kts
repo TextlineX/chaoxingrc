@@ -1,7 +1,9 @@
 allprojects {
     repositories {
-        google()
-        mavenCentral()
+        // 使用阿里云镜像源
+        maven { url = uri("https://maven.aliyun.com/repository/google") }
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
+        maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
     }
 }
 
@@ -21,4 +23,11 @@ subprojects {
 
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
+}
+
+// 增加内存设置以避免构建时出现OOM
+gradle.projectsEvaluated {
+    tasks.withType<JavaCompile> {
+        options.compilerArgs.addAll(listOf("-Xmx4096m", "-XX:MaxPermSize=1024m"))
+    }
 }

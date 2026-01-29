@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static ThemeData get lightTheme {
-    // 使用默认颜色，稍后通过ThemeProvider动态更新
+  static ThemeData getLightTheme(Color seedColor) {
+    // 使用提供的种子颜色创建浅色主题
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: Colors.blue,
+      seedColor: seedColor, // 使用传入的种子颜色
       brightness: Brightness.light,
     );
 
@@ -55,10 +55,10 @@ class AppTheme {
     );
   }
 
-  static ThemeData get darkTheme {
-    // 使用默认颜色，稍后通过ThemeProvider动态更新
+  static ThemeData getDarkTheme(Color seedColor) {
+    // 使用提供的种子颜色创建深色主题
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: Colors.blue,
+      seedColor: seedColor, // 使用传入的种子颜色
       brightness: Brightness.dark,
     );
 

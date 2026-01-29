@@ -1,0 +1,115 @@
+name: android_build
+
+on:
+  push:
+    branches: [ "master", "beta" ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    branches: [ "master", "beta" ]
+  workflow_dispatch:
+    inputs:
+      release_notes:
+        description: '发布说明'
+        required: false
+        type: string
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Java 环境
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: 配置 Flutter 环境
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      # --- 关键修复：强制将 Gradle 下载源换成腾讯云镜像，解决 Connection refused ---
+      - name: 修复 Gradle 下载
+        run: |
+          sed -i 's/services.gradle.org\/distributions/mirrors.cloud.tencent.com\/gradle/g' android/gradle/wrapper/gradle-wrapper.properties
+        shell: bash
+      # -----------------------------------------------------------------------
+
+      - name: 安装项目依赖
+        run: flutter pub get
+
+      - name: 修复 Gradlew 权限
+        run: chmod +x android/gradlew
+
+      - name: 代码静态分析
+        run: flutter analyze || true
+
+      - name: 解码 Keystore
+        run: |
+          echo "${{ secrets.SIGNING_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
+        shell: bash
+
+      - name: 创建 key.properties
+        run: |
+          echo "storePassword=${{ secrets.SIGNING_STORE_PASSWORD }}" > android/key.properties
+          echo "keyPassword=${{ secrets.SIGNING_KEY_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.SIGNING_KEY_ALIAS }}" >> android/key.properties
+          echo "storeFile=upload-keystore.jks" >> android/key.properties
+        shell: bash
+
+      - name: 构建安装包
+        run: |
+          if [[ "${{ github.ref_name }}" == "beta" ]]; then
+            echo "正在构建 Beta 版本 APK..."
+            flutter build apk --release --no-pub
+          else
+            echo "正在构建正式版本..."
+            flutter build apk --release --no-pub
+            flutter build appbundle --release --no-pub
+          fi
+
+      - name: 上传 APK 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: apks
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  release:
+    name: Create Release
+    needs: build
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 获取当前版本号
+        id: version
+        run: |
+          FULL_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | xargs)
+          CLEAN_VERSION=$(echo $FULL_VERSION | sed 's/+.*//')
+          echo "clean_version=$CLEAN_VERSION" >> $GITHUB_OUTPUT
+
+      - name: 下载构建产物
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: 发布 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name == 'beta' && format('v{0}-beta', steps.version.outputs.clean_version) || format('v{0}', steps.version.outputs.clean_version) }}
+          name: ${{ github.ref_name == 'beta' && 'Beta v' || 'Release v' }}${{ steps.version.outputs.clean_version }}
+          body: ${{ github.event.inputs.release_notes || '' }}
+          prerelease: ${{ github.ref_name == 'beta' }}
+          files: artifacts/apks/app-release.apk

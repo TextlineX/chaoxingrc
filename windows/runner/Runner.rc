@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "textline.chaoxingrc" "\0"
+            VALUE "CompanyName", "textline" "\0"
             VALUE "FileDescription", "chaoxingrc" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "chaoxingrc" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 textline.chaoxingrc. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025 textline. All rights reserved." "\0"
             VALUE "OriginalFilename", "chaoxingrc.exe" "\0"
             VALUE "ProductName", "chaoxingrc" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

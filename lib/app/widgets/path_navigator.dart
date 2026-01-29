@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/file_provider.dart';
+import 'conditional_glass_effect.dart';
 
 class PathNavigator extends StatefulWidget {
   final FileProvider provider;
+  final bool embedded;
 
   const PathNavigator({
     super.key,
     required this.provider,
+    this.embedded = false,
   });
 
   @override
@@ -19,17 +22,19 @@ class _PathNavigatorState extends State<PathNavigator> {
   Widget build(BuildContext context) {
     final provider = context.watch<FileProvider>();
     final history = provider.pathHistory;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    return SizedBox(
+    final content = SizedBox(
       height: 48,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: history.length,
-        separatorBuilder: (context, index) => const Icon(
+        separatorBuilder: (context, index) => Icon(
           Icons.chevron_right,
           size: 20,
-          color: Colors.grey,
+          color: theme.colorScheme.onSurfaceVariant,
         ),
         itemBuilder: (context, index) {
           final segment = history[index];
@@ -39,7 +44,7 @@ class _PathNavigatorState extends State<PathNavigator> {
             onTap: isLast
                 ? null
                 : () async {
-                    int steps = history.length - 1 - index;
+                    final steps = history.length - 1 - index;
                     for (int i = 0; i < steps; i++) {
                       await provider.navigateBack();
                     }
@@ -51,8 +56,8 @@ class _PathNavigatorState extends State<PathNavigator> {
                 segment['name'] ?? '未知',
                 style: TextStyle(
                   color: isLast
-                      ? Theme.of(context).primaryColor
-                      : Colors.grey[700],
+                      ? theme.colorScheme.onSurface
+                      : theme.colorScheme.onSurfaceVariant,
                   fontWeight: isLast ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
@@ -60,6 +65,17 @@ class _PathNavigatorState extends State<PathNavigator> {
           );
         },
       ),
+    );
+
+    if (widget.embedded) {
+      return content;
+    }
+
+    return ConditionalGlassEffect(
+      blur: 10,
+      opacity: isDark ? 0.05 : 0.1,
+      padding: EdgeInsets.zero,
+      child: content,
     );
   }
 }

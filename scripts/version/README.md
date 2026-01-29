@@ -5,7 +5,6 @@
 ## 📁 文件说明
 
 - `version_manager.py` - Python 版本管理脚本（适用于所有平台）
-- `update_version.bat` - Windows 批处理脚本
 - `update_version.ps1` - PowerShell 脚本
 
 ## 🚀 使用方法
@@ -28,21 +27,20 @@ python3 version_manager.py major
 
 ### Windows 用户
 
-1. **双击运行** `update_version.bat`：默认增加构建号
-2. **命令行运行**：
+1. **命令行运行**：
 
 ```powershell
 # 增加构建号
-.\update_version.bat build
+.\update_version.ps1 build
 
 # 增加补丁版本
-.\update_version.bat patch
+.\update_version.ps1 patch
 
 # 增加次版本号
-.\update_version.bat minor
+.\update_version.ps1 minor
 
 # 增加主版本号
-.\update_version.bat major
+.\update_version.ps1 major
 ```
 
 ### PowerShell 用户

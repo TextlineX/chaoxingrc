@@ -3,11 +3,13 @@ import 'package:flutter/foundation.dart';
 import '../providers/transfer_provider.dart';
 import '../providers/file_provider.dart';
 import '../providers/user_provider.dart';
+import '../providers/permission_provider.dart';
 
 class GlobalProviders {
   static final TransferProvider transferProvider = TransferProvider();
   static final FileProvider fileProvider = FileProvider();
   static final UserProvider userProvider = UserProvider();
+  static final PermissionProvider permissionProvider = PermissionProvider();
 
   // 初始化所有全局提供者
   static Future<void> init() async {
@@ -18,16 +20,24 @@ class GlobalProviders {
       await userProvider.init(notify: false);
       debugPrint('UserProvider 初始化完成');
 
+      // 如果用户已登录，加载用户信息
+      if (userProvider.isLoggedIn) {
+        await userProvider.loadUserInfo();
+        debugPrint('用户信息加载完成');
+      }
+
       // 并行初始化其他 Provider
       await Future.wait([
         transferProvider.init(notify: false, context: null),
         fileProvider.init(notify: false),
+        permissionProvider.init(notify: false),
       ]);
       debugPrint('TransferProvider 和 FileProvider 初始化完成');
 
       // 设置Provider之间的关系
       transferProvider.setFileProvider(fileProvider);
       transferProvider.setUserProvider(userProvider);
+      fileProvider.setPermissionProvider(permissionProvider);
 
       debugPrint('全局提供者初始化完成');
       debugPrint('UserProvider 登录状态: ${userProvider.isLoggedIn}');

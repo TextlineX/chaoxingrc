@@ -58,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       if (mounted) {
-        setState(() => _nativeStatus = '登录成功，正在获取信息...');
+        setState(() => _nativeStatus = '登录成功，正在获取小组信息...');
       }
 
       // 2. 尝试访问主页以确保 Cookie 完整
@@ -129,12 +129,17 @@ class _LoginScreenState extends State<LoginScreen> {
           if (bbsid != null && bbsid.isNotEmpty) {
             if (mounted) {
               // 使用 confirmLogin 更新全局登录状态
-              await context.read<UserProvider>().confirmLogin(
-                    username.isNotEmpty
-                        ? username
-                        : (selectedCircle['name'] ?? '用户'),
-                    bbsid,
-                  );
+              final userProvider = context.read<UserProvider>();
+              await userProvider.confirmLogin(
+                username.isNotEmpty
+                    ? username
+                    : (selectedCircle['name'] ?? '用户'),
+                bbsid,
+              );
+              
+              // 加载用户信息
+              await userProvider.loadUserInfo();
+              
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -148,6 +153,30 @@ class _LoginScreenState extends State<LoginScreen> {
             }
             return;
           }
+        }else {
+          if (mounted) {
+            setState(() {
+              _isNativeLoading = false;
+              _nativeStatus = '登录成功但无法获取网盘信息(BBSID)。';
+            });
+            showDialog(
+              context: context,
+              barrierDismissible: false, // 强制用户阅读
+              builder: (context) => AlertDialog(
+                title: const Text('无法进入网盘'),
+                content: const Text(
+                  '检测到您的超星账号尚未加入任何网盘小组。\n\n'
+                      '请打开超星学习通App或网页版，进入“网盘”功能，加入或创建一个小组后再次尝试登录。',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('我知道了'),
+                  ),
+                ],
+              ),
+            );
+          }
         }
       } catch (e) {
         debugPrint('Error fetching circle list: $e');
@@ -159,7 +188,12 @@ class _LoginScreenState extends State<LoginScreen> {
       if (bbsid != null && bbsid.isNotEmpty) {
         if (mounted) {
           // 使用 confirmLogin 更新全局登录状态
-          await context.read<UserProvider>().confirmLogin(username, bbsid);
+          final userProvider = context.read<UserProvider>();
+          await userProvider.confirmLogin(username, bbsid);
+          
+          // 加载用户信息
+          await userProvider.loadUserInfo();
+          
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('登录成功！')),
@@ -225,7 +259,12 @@ class _LoginScreenState extends State<LoginScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SizedBox(height: 20),
-          const Icon(Icons.cloud_circle, size: 80, color: Colors.blue),
+          Image.asset(
+            'assets/icon/app_icon.webp',
+            width: 80,
+            height: 80,
+            fit: BoxFit.contain,
+          ),
           const SizedBox(height: 20),
           const Text(
             '使用超星账号登录',
@@ -236,7 +275,7 @@ class _LoginScreenState extends State<LoginScreen> {
           TextField(
             controller: _usernameController,
             decoration: const InputDecoration(
-              labelText: '手机号 / 学号 / UID',
+              labelText: '请输入手机号或者超星学习通账号',
               prefixIcon: Icon(Icons.person),
               border: OutlineInputBorder(),
             ),
