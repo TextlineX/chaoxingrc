@@ -1,5 +1,5 @@
 <div align="center">
-    <img width="200" height="200" src="assets/images/logo/logo.png">
+    <img width="200" height="200" src="assets/icon/app_icon.webp">
 </div>
 
 <div align="center">
@@ -12,11 +12,14 @@
 </div>
     <p>使用 Flutter 开发的超星网盘第三方客户端</p>
 
-<img src="assets/screenshots/screenshot_1.png" width="32%" alt="screenshot" />
-<img src="assets/screenshots/screenshot_2.png" width="32%" alt="screenshot" />
-<img src="assets/screenshots/screenshot_3.png" width="32%" alt="screenshot" />
+<img src="assets/screenshots/Screenshot_20260129_161537.png" width="32%" alt="screenshot" />
+<img src="assets/screenshots/Screenshot_20260129_161556.png" width="32%" alt="screenshot" />
+<img src="assets/screenshots/Screenshot_20260129_163121.png" width="32%" alt="screenshot" />
 <br/>
-<img src="assets/screenshots/main_screen.png" width="96%" alt="main" />
+<img src="assets/screenshots/Screenshot_20260129_161651.png" width="45%" alt="screenshot" />
+<img src="assets/screenshots/Screenshot_20260129_161655.png" width="45%" alt="screenshot" />
+<br/>
+<img src="assets/screenshots/Screenshot_20260129_161703.png" width="96%" alt="main" />
 <br/>
 </div>
 
@@ -25,11 +28,11 @@
 ## 适配平台
 
 - [x] Android
-- [x] iOS
-- [x] Windows
-- [x] macOS
-- [x] Linux
-- [x] Web
+- [ ] iOS
+- [ ] Windows
+- [ ] macOS
+- [ ] Linux
+- [ ] Web
 
 ## 功能
 
@@ -44,9 +47,3 @@
 ## 声明
 
 本项目仅用于学习与研究，请勿用于任何违反服务条款的用途。
-
-## 致谢
-
-- Flutter
-- Dio
-- Provider
