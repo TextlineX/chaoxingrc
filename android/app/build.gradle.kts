@@ -1,8 +1,17 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// 加载 keystore 属性文件
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(keystorePropertiesFile.inputStream())
 }
 
 android {
@@ -17,6 +26,18 @@ android {
 
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_11.toString()
+    }
+
+    // 配置签名
+    signingConfigs {
+        create("release") {
+            if (keystoreProperties.containsKey("storeFile")) {
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            }
+        }
     }
 
     defaultConfig {
@@ -37,8 +58,8 @@ android {
 
     buildTypes {
         release {
-            // !!! 关键：强制所有 release 构建都使用 debug 密钥签名，解决 CI 环境签名问题 !!!
-            signingConfig = signingConfigs.getByName("debug")
+            // 使用 release 签名配置
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
 
             // 增加内存设置以避免构建时出现OOM
             ndk {

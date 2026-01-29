@@ -15,7 +15,17 @@ class DynamicThemeBuilder extends StatelessWidget {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, _) {
         // 使用一个FutureBuilder来获取颜色方案，但初始显示使用默认的浅色或深色方案
-        final brightness = Theme.of(context).brightness;
+        // 根据ThemeProvider的themeMode来确定亮度
+        Brightness brightness;
+        switch (themeProvider.themeMode) {
+          case ThemeMode.light:
+            brightness = Brightness.light;
+          case ThemeMode.dark:
+            brightness = Brightness.dark;
+          case ThemeMode.system:
+          default:
+            brightness = MediaQuery.of(context).platformBrightness;
+        }
         
         // 根据主题模式确定基础颜色方案
         ColorScheme baseColorScheme;

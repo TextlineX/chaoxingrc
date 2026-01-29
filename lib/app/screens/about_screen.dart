@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../widgets/conditional_glass_effect.dart';
+import '../widgets/sponsor_dialog.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -44,13 +45,24 @@ class _AboutScreenState extends State<AboutScreen> {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
               ),
-              child: Icon(
-                Icons.cloud,
-                size: 60,
-                color: Theme.of(context).colorScheme.onPrimary,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.asset(
+                  'assets/icon/app_icon.webp',
+                  width: 100,
+                  height: 100,
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
 
@@ -94,8 +106,7 @@ class _AboutScreenState extends State<AboutScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '超星网盘是一款功能强大的云存储应用，支持文件上传、下载、分享等功能。'
-                      '采用Material 3设计语言，界面美观现代，操作简单直观。',
+                      '使用 Flutter 开发的超星网盘第三方客户端',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -107,7 +118,7 @@ class _AboutScreenState extends State<AboutScreen> {
 
             const SizedBox(height: 16),
 
-            // 开源许可
+            // 作者信息
             ConditionalGlassCard(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -115,17 +126,71 @@ class _AboutScreenState extends State<AboutScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '开源许可',
+                      '作者: Textline',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // 作者头像
+                    Center(
+                      child: Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 2,
+                          ),
+                        ),
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/icon/Textline.jpg',
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // 赞助我们
+            ConditionalGlassCard(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '支持作者',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      '本应用基于MIT许可证开源',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return const SponsorDialog();
+                          },
+                        );
+                      },
+                      icon: const Icon(Icons.favorite, size: 18),
+                      label: const Text('赞助作者'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
                       ),
                     ),
                   ],

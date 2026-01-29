@@ -52,6 +52,19 @@ jobs:
       - name: 代码静态分析
         run: flutter analyze || true
 
+      - name: 解码 Keystore
+        run: |
+          echo "${{ secrets.SIGNING_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
+        shell: bash
+
+      - name: 创建 key.properties
+        run: |
+          echo "storePassword=${{ secrets.SIGNING_STORE_PASSWORD }}" > android/key.properties
+          echo "keyPassword=${{ secrets.SIGNING_KEY_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.SIGNING_KEY_ALIAS }}" >> android/key.properties
+          echo "storeFile=upload-keystore.jks" >> android/key.properties
+        shell: bash
+
       - name: 构建安装包
         run: |
           if [[ "${{ github.ref_name }}" == "beta" ]]; then
@@ -97,5 +110,6 @@ jobs:
         with:
           tag_name: ${{ github.ref_name == 'beta' && format('v{0}-beta', steps.version.outputs.clean_version) || format('v{0}', steps.version.outputs.clean_version) }}
           name: ${{ github.ref_name == 'beta' && 'Beta v' || 'Release v' }}${{ steps.version.outputs.clean_version }}
+          body: ${{ github.event.inputs.release_notes || '' }}
           prerelease: ${{ github.ref_name == 'beta' }}
           files: artifacts/apks/app-release.apk
