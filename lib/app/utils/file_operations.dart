@@ -47,15 +47,15 @@ class FileOperations {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('文件操作'),
+        title: Text('文件操作', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('文件: ${file.name}'),
-            Text('大小: ${file.formattedSize}'),
+            Text('文件: ${file.name}',style:TextStyle(color:Theme.of(context).colorScheme.onSurface)),
+            Text('大小: ${file.formattedSize}',style:TextStyle(color:Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 16),
-            const Text('确认要下载此文件吗？'),
+            Text('确认要下载此文件吗？',style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
           ],
         ),
         actions: [
@@ -133,7 +133,7 @@ class FileOperations {
               const SizedBox(height: 16),
               ListTile(
                 leading: const Icon(Icons.check_circle_outline),
-                title: const Text('选择'),
+                title: Text('选择', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
                 onTap: () {
                   Navigator.pop(context);
                   fileProvider.toggleSelectionMode();
@@ -144,7 +144,7 @@ class FileOperations {
               if (!file.isFolder)
                 ListTile(
                   leading: const Icon(Icons.open_in_new),
-                  title: const Text('打开'),
+                  title: Text('打开', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
                   onTap: () async {
                     Navigator.pop(context);
 
@@ -180,7 +180,7 @@ class FileOperations {
                       showDialog(
                         context: context,
                         builder: (context) => AlertDialog(
-                          title: const Text('文件未下载'),
+                          title: Text('文件未下载', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
                           content: const Text('需要先下载文件才能打开。是否立即下载？'),
                           actions: [
                             TextButton(
@@ -228,7 +228,7 @@ class FileOperations {
               if (file.isFolder && permissionProvider.checkRenameFolderPermission())
                 ListTile(
                   leading: const Icon(Icons.edit),
-                  title: const Text('重命名'),
+                  title: Text('重命名', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
                   onTap: () {
                     Navigator.pop(context);
                     _showRenameDialog(context, fileProvider, file);
@@ -247,7 +247,7 @@ class FileOperations {
                 ),
               ListTile(
                 leading: const Icon(Icons.info_outline),
-                title: const Text('详情'),
+                title: Text('详情', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
                 onTap: () {
                   Navigator.pop(context);
                   showFileInfo(context, file);
@@ -267,7 +267,7 @@ class FileOperations {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('操作提示'),
+          title: Text('操作提示', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
           content: const Text(
             '此网盘暂不支持直接重命名文件。\n\n您可以尝试以下替代方案：\n1. 下载文件到本地\n2. 删除云端文件\n3. 本地重命名后重新上传',
           ),
@@ -310,7 +310,7 @@ class FileOperations {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('重命名文件夹'),
+        title: Text('重命名文件夹', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -350,7 +350,7 @@ class FileOperations {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('确认删除'),
+        title: Text('确认删除', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
         content: Text('确定要删除选中的 ${files.length} 个项目吗？此操作不可恢复。'),
         actions: [
           TextButton(
@@ -465,7 +465,7 @@ class FileOperations {
       builder: (context) => StatefulBuilder(
         builder: (BuildContext dialogContext, StateSetter setState) {
           return AlertDialog(
-            title: const Text('选择目标文件夹'),
+            title: Text('选择目标文件夹', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
             content: SizedBox(
               width: double.maxFinite,
               height: 400,

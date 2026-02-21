@@ -46,7 +46,7 @@ class _TransferTabState extends State<TransferTab>
           : Theme.of(context).colorScheme.surface,
       primary: false, // 嵌套在 HomeScreen 中，不需要处理顶部状态栏区域
       appBar: AppBar(
-        title: widget.showTitle ? const Text('传输列表') : null,
+        title: widget.showTitle ? Text('传输列表', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)) : null,
         centerTitle: true,
         elevation: 0,
         backgroundColor: themeProvider.hasCustomWallpaper
@@ -174,20 +174,19 @@ class _TransferTabState extends State<TransferTab>
                 showDialog(
                   context: context,
                   builder: (context) => ConditionalGlassDialog(
-                    title: const Text('确认删除'),
-                    content: const Text('确定要删除此任务吗？'),
+                    title: Text('确认删除', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+                    content: Text('确定要删除此任务吗？', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('取消'),
+                        child: Text('取消', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
                       ),
                       TextButton(
                         onPressed: () {
                           Navigator.pop(context);
                           provider.deleteTask(task.id);
                         },
-                        child: const Text('删除',
-                            style: TextStyle(color: Colors.red)),
+                        child: Text('删除', style: TextStyle(color: Colors.red)),
                       ),
                     ],
                   ),
@@ -229,20 +228,19 @@ class _TransferTabState extends State<TransferTab>
                 showDialog(
                   context: context,
                   builder: (context) => ConditionalGlassDialog(
-                    title: const Text('确认删除'),
-                    content: const Text('确定要删除此任务吗？'),
+                    title: Text('确认删除', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+                    content: Text('确定要删除此任务吗？', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('取消'),
+                        child: Text('取消', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
                       ),
                       TextButton(
                         onPressed: () {
                           Navigator.pop(context);
                           provider.deleteTask(task.id);
                         },
-                        child: const Text('删除',
-                            style: TextStyle(color: Colors.red)),
+                        child: Text('删除', style: TextStyle(color: Colors.red)),
                       ),
                     ],
                   ),
@@ -268,20 +266,19 @@ class _TransferTabState extends State<TransferTab>
                 showDialog(
                   context: context,
                   builder: (context) => ConditionalGlassDialog(
-                    title: const Text('确认删除'),
-                    content: const Text('确定要删除此任务吗？'),
+                    title: Text('确认删除', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+                    content: Text('确定要删除此任务吗？', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('取消'),
+                        child: Text('取消', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
                       ),
                       TextButton(
                         onPressed: () {
                           Navigator.pop(context);
                           provider.deleteTask(task.id);
                         },
-                        child: const Text('删除',
-                            style: TextStyle(color: Colors.red)),
+                        child: Text('删除', style: TextStyle(color: Colors.red)),
                       ),
                     ],
                   ),
@@ -398,7 +395,7 @@ class _TransferTabState extends State<TransferTab>
                         ],
                       ),
                       if (task.errorMessage != null)
-                        Text(task.errorMessage!, style: const TextStyle(color: Colors.red)),
+                        Text(task.errorMessage!, style: TextStyle(color: Colors.red)),
                     ],
                   ),
                   trailing: _buildTrailingIcons(context, task, provider),

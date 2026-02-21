@@ -1,4 +1,5 @@
 // lib/app/screens/files/files_tab.dart
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
@@ -103,7 +104,7 @@ class _FilesTabState extends State<FilesTab> {
 
   void _showUploadStub() async {
     try {
-      final result = await FilePicker.platform.pickFiles(allowMultiple: true);
+      final result = await FilePicker.platform.pickFiles(allowMultiple: true,withData: false);
       final files = result?.files ?? [];
       if (files.isEmpty) return;
 
@@ -114,15 +115,21 @@ class _FilesTabState extends State<FilesTab> {
       for (final f in files) {
         final path = f.path;
         if (path == null || path.isEmpty) continue;
+
+        //获取文件大小
+        final file = File(path);
+        final fileSize = await file.length();
+
         try {
           transferProvider.addUploadTask(
             filePath: path,
             fileName: f.name,
-            fileSize: f.size,
+            fileSize: fileSize,
             dirId: _fileProvider.currentFolderId,
           );
           successCount++;
         } catch (e) {
+          //错误处理
           // 如果权限不足，显示错误信息
           if (mounted) {
             String errorMessage = e.toString();
@@ -159,10 +166,13 @@ class _FilesTabState extends State<FilesTab> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('新建文件夹'),
+        title: Text('新建文件夹',
+        style: TextStyle(color:Theme.of(context).colorScheme.onSurface)
+        ),
         content: TextField(
           controller: controller,
           autofocus: true,
+          style: TextStyle(color:Theme.of(context).colorScheme.onSurface),
           decoration: const InputDecoration(
             hintText: '请输入文件夹名称',
             border: OutlineInputBorder(),
