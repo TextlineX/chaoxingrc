@@ -50,7 +50,7 @@ dependencies:
   connectivity_plus: ^5.0.2  # 暂时保持当前版本，稍后处理升级
 
   # UI组件
-  material_color_utilities: ^0.11.1  # 暂时保持当前版本
+  material_color_utilities: ^0.13.0  # 升级以匹配Flutter SDK要求
   dynamic_color: ^1.6.8
   flutter_svg: ^2.0.9
 
