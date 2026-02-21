@@ -185,7 +185,11 @@ class TransferProvider extends ChangeNotifier {
 
       // 根据文件大小选择上传方式
       const directUploadThreshold = 2 * 1024 * 1024 * 1024; // 2GB
-
+      // 超星网盘不支持分块上传，所有文件都使用直接上传
+      debugPrint('文件大小: ${(fileSize / (1024 * 1024)).toStringAsFixed(2)} MB，使用直接上传');
+      await _processDirectUpload(task, fileSize);
+      // 以下代码已注释，因为超星网盘不支持分块上传 QAQ
+      /*
       if (fileSize < directUploadThreshold) {
         debugPrint('文件较小 (${(fileSize / (1024 * 1024)).toStringAsFixed(2)} MB)，使用直接上传');
         await _processDirectUpload(task, fileSize);
@@ -193,6 +197,7 @@ class TransferProvider extends ChangeNotifier {
         debugPrint('文件较大 (${(fileSize / (1024 * 1024)).toStringAsFixed(2)} MB)，使用分块上传');
         await _processChunkedUpload(task, fileSize);
       }
+      */
     } catch (e) {
       _handleUploadError(task, e, cancelToken);
     }

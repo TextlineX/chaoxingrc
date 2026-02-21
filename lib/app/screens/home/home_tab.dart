@@ -48,11 +48,12 @@ class _HomeTabState extends State<HomeTab> {
             children: [
               const Icon(Icons.dynamic_feed),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 '动态',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ],

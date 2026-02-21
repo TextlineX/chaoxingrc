@@ -57,6 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
+      // 登录成功后的处理逻辑
       if (mounted) {
         setState(() => _nativeStatus = '登录成功，正在获取小组信息...');
       }
@@ -153,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
             }
             return;
           }
-        }else {
+        } else {
           if (mounted) {
             setState(() {
               _isNativeLoading = false;
@@ -166,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 title: const Text('无法进入网盘'),
                 content: const Text(
                   '检测到您的超星账号尚未加入任何网盘小组。\n\n'
-                      '请打开超星学习通App或网页版，进入“网盘”功能，加入或创建一个小组后再次尝试登录。',
+                      '请打开超星学习通App或网页版，进入"网盘"功能，加入或创建一个小组后再次尝试登录。',
                 ),
                 actions: [
                   TextButton(
@@ -211,11 +212,33 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isNativeLoading = false;
-          _nativeStatus = '发生错误: $e';
-        });
+      if (e is LoginException) {
+        if (mounted) {
+          setState(() {
+            _isNativeLoading = false;
+            switch (e.type) {
+              case LoginErrorType.invalidCredentials:
+                _nativeStatus = '账号或密码错误';
+                break;
+              case LoginErrorType.notInGroup:
+                _nativeStatus = '您还未加入该小组';
+                break;
+              case LoginErrorType.networkError:
+                _nativeStatus = '网络连接失败，请检查网络设置';
+                break;
+              default:
+                _nativeStatus = e.message;
+            }
+          });
+          return;
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isNativeLoading = false;
+            _nativeStatus = '发生错误: $e';
+          });
+        }
       }
     }
   }
