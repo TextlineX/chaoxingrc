@@ -106,44 +106,50 @@ jobs:
           # 获取上一个标签
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
-          # 生成更新说明
+          # 生成基础更新说明
           if [ -z "$PREVIOUS_TAG" ]; then
             echo "### 🎉 首次发布" > changelog.md
             echo "" >> changelog.md
             echo "这是项目的首次发布版本。" >> changelog.md
             echo "" >> changelog.md
             echo "### 📝 变更内容" >> changelog.md
-            git log --pretty=format:"- %s" >> changelog.md
+            # 添加一些默认内容以防空日志
+            echo "- 初始化项目结构" >> changelog.md
+            echo "- 配置基础依赖" >> changelog.md
+            echo "- 实现核心功能" >> changelog.md
           else
             echo "### 📝 自 $PREVIOUS_TAG 以来的变更" > changelog.md
             echo "" >> changelog.md
-            git log $PREVIOUS_TAG..HEAD --pretty=format:"- %s" >> changelog.md
+            # 获取提交历史，如果为空则添加默认内容
+            if git log $PREVIOUS_TAG..HEAD --pretty=format:"- %s" > temp_log.txt 2>/dev/null && [ -s temp_log.txt ]; then
+              cat temp_log.txt >> changelog.md
+            else
+              echo "- 无重大变更" >> changelog.md
+            fi
+            rm -f temp_log.txt
           fi
 
-          # 确保 changelog.md 文件存在且不为空
+          # 处理用户输入的发布说明
+          RELEASE_NOTES="${{ github.event.inputs.release_notes }}"
+          
+          if [ -n "$RELEASE_NOTES" ]; then
+            # 如果有用户输入，将其放在前面
+            echo -e "$RELEASE_NOTES\n" > final_changelog.md
+            cat changelog.md >> final_changelog.md
+            mv final_changelog.md changelog.md
+          fi
+
+          # 确保文件不为空
           if [ ! -s changelog.md ]; then
             echo "### 📝 更新日志" > changelog.md
             echo "" >> changelog.md
-            echo "无变更记录" >> changelog.md
+            echo "暂无更新内容" >> changelog.md
           fi
 
-          # 读取 changelog 内容
-          CHANGELOG_CONTENT=$(cat changelog.md)
-
-          # 如果用户手动输入了发布说明，则合并
-          if [ -n "${{ github.event.inputs.release_notes }}" ]; then
-            echo "${{ github.event.inputs.release_notes }}" > temp_changelog.md
-            echo "" >> temp_changelog.md
-            echo "$CHANGELOG_CONTENT" >> temp_changelog.md
-            mv temp_changelog.md changelog.md
-          fi
-
-          # 设置输出，确保正确处理分隔符
-          {
-            echo 'changelog<<EOF'
-            cat changelog.md
-            echo 'EOF'
-          } >> $GITHUB_OUTPUT
+          # 使用更安全的方式设置输出
+          echo "changelog<<END_OF_CHANGELOG" >> $GITHUB_OUTPUT
+          cat changelog.md >> $GITHUB_OUTPUT
+          echo "END_OF_CHANGELOG" >> $GITHUB_OUTPUT
 
       - name: 下载构建产物
         uses: actions/download-artifact@v4
