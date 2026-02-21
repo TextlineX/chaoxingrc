@@ -9,6 +9,7 @@ import '../models/connection_result.dart';
 import '../models/connection_stage.dart';
 import 'download_path_service.dart';
 
+
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
   factory ApiClient() => _instance;
@@ -263,8 +264,7 @@ class ApiClient {
       final fileName = filePath.split('/').last;
       final fileExtension = fileName.split('.').last.toLowerCase();
 
-      // 处理中文文件名编码问题 - 使用URL编码确保文件名正确传输
-      String encodedFileName = Uri.encodeComponent(fileName);
+      // 移除预先编码，让FormData自动处理文件名编码
 
       // 根据扩展名确定MIME类型
       String contentType = 'application/octet-stream'; // 默认类型
@@ -444,7 +444,7 @@ class ApiClient {
         'action': data?['action'] ?? 'uploadFile',
         'file': await MultipartFile.fromFile(
           filePath,
-          filename: encodedFileName, // 使用编码后的文件名
+          filename: fileName,
           contentType: MediaType.parse(contentType), // 设置正确的MIME类型
         ),
         // 将其他参数添加到params字段中
@@ -497,8 +497,7 @@ class ApiClient {
       final fileName = filePath.split('/').last;
       final fileExtension = fileName.split('.').last.toLowerCase();
 
-      // 处理中文文件名编码问题 - 使用URL编码确保文件名正确传输
-      String encodedFileName = Uri.encodeComponent(fileName);
+      // 移除预先编码，让FormData自动处理文件名编码
 
       // 根据扩展名确定MIME类型
       String contentType = 'application/octet-stream'; // 默认类型
@@ -678,7 +677,7 @@ class ApiClient {
         'action': data?['action'] ?? 'uploadFile',
         'file': await MultipartFile.fromFile(
           filePath,
-          filename: encodedFileName, // 使用编码后的文件名
+          filename: fileName,
           contentType: MediaType.parse(contentType), // 设置正确的MIME类型
         ),
         // 将其他参数添加到params字段中
@@ -907,4 +906,45 @@ class RetryInterceptor extends Interceptor {
         return false;
     }
   }
+}
+
+class AuthInterceptor extends Interceptor {
+  @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) {
+    if(response.data is String){
+      final data = response.data.toString();
+      if(data.startsWith('<!DOCTYPE html>') ||
+          data.startsWith('<html') ||
+          data.contains('<title>验证码</title>')
+      ) {
+        handler.reject(DioException(
+          type:DioExceptionType.unknown,
+          error:AuthException('需要重新登录'),
+          response:response,
+          requestOptions:response.requestOptions,
+        ));
+        return;
+      }
+    }
+
+  if(response.data is Map) {
+  final data = response.data as Map;
+  if(data.containsKey('code') && data['code'] == 401) {
+  handler.reject(DioException(
+  type:DioExceptionType.unknown,
+  error:AuthException('需要重新登录'),
+  response:response,
+  requestOptions:response.requestOptions,
+  ));
+  return;
+}
+}
+  handler.next(response);
+}
+}
+class AuthException implements Exception {
+  final String message;
+  AuthException(this.message);
+  @override
+  String toString() => 'AuthException: $message';
 }

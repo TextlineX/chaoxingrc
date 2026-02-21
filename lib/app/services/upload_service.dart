@@ -27,8 +27,8 @@ class UploadService {
   static const int _chunkSize = 10 * 1024 * 1024;
   // 大文件阈值 (100MB) - 超过此大小使用分块上传
   static const int _largeFileThreshold = 100 * 1024 * 1024;
-  // 最大文件大小限制 (4GB)
-  static const int _maxFileSize = 4 * 1024 * 1024 * 1024;
+  // 最大文件大小限制 (2GB)
+  static const int _maxFileSize = 2 * 1024 * 1024 * 1024;
 
   // 初始化方法
   Future<void> init() async {
@@ -38,7 +38,7 @@ class UploadService {
 
   // 根据文件大小决定上传方式
   UploadMethod _getUploadMethod(int fileSize) {
-    return fileSize > _largeFileThreshold ? UploadMethod.chunked : UploadMethod.direct;
+    return UploadMethod.direct;
   }
 
   // 统一上传入口
@@ -96,14 +96,12 @@ class UploadService {
       final fileSize = await file.length();
       debugPrint('文件大小: ${(fileSize / (1024 * 1024)).toStringAsFixed(2)} MB');
 
-      // 获取文件名和扩展名
+      // 获取文件名和扩展名,修复中文文件名上传问题
       final fileName = filePath.split('/').last;
       final fileExtension = fileName.split('.').last.toLowerCase();
+      final encodedFileName = Uri.encodeComponent(fileName);
 
-      // 处理中文文件名编码问题
-      String encodedFileName = Uri.encodeComponent(fileName);
-
-      // 根据扩展名确定MIME类型
+      // 根据扩展名确定MIME类型,用于排除其他文件类型
       String contentType = 'application/octet-stream'; // 默认类型
       switch (fileExtension) {
         // 图片类型
@@ -273,9 +271,9 @@ class UploadService {
           break;
       }
 
-      // 3. 创建表单数据
+      // 3. 创建表单数据,输出日志
       debugPrint('准备创建表单数据，上传URL: ${config['data']?['uploadUrl'] ?? config['uploadUrl']}');
-      debugPrint('文件名: $fileName, 编码后文件名: $encodedFileName');
+      debugPrint('文件名: $fileName');
       debugPrint('文件MIME类型: $contentType');
       debugPrint('上传参数: puid=${config['data']?['puid']}, token=${config['data']?['token']}');
       
@@ -294,14 +292,14 @@ class UploadService {
       final formData = FormData.fromMap({
         'file': await MultipartFile.fromFile(
           filePath,
-          filename: encodedFileName,
+          filename: fileName,
           contentType: MediaType.parse(contentType),
         ),
         'puid': config['data']?['puid'] ?? config['puid'],
         'token': config['data']?['token'] ?? config['token'],
         '_token': config['data']?['token'] ?? config['token'],
         'dirId': dirId,
-        'fname': fileName, // 原始文件名
+        'fname': encodedFileName, // 原始文件名
         'fid': dirId, // 文件夹ID，与dirId相同
       });
 
@@ -597,12 +595,14 @@ class UploadService {
     // 添加调试日志，便于排查问题
     debugPrint('初始化分块上传请求URL: $uploadUrl/upload/_chunkedUpload');
     debugPrint('初始化分块上传请求数据: fileMd5=$fileMd5, fileName=$fileName, fileSize=$fileSize, dirId=$dirId');
-    
+    //分块中文文件名编码修复
+    final encodedFileName = Uri.encodeComponent(fileName);
+
     final formData = FormData.fromMap({
       '_token': config['data']?['token'] ?? config['token'],
       'puid': config['data']?['puid'] ?? config['puid'],
       'fileMd5': fileMd5,
-      'fileName': fileName,
+      'fileName': encodedFileName,
       'fileSize': fileSize.toString(),
       'dirId': dirId,
       'chunkSize': _chunkSize.toString(),

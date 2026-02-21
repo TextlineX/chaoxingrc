@@ -8,6 +8,26 @@ import 'package:flutter/foundation.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import '../../utils/simple_log_interceptor.dart';
 
+//自定义登录异常
+class LoginException implements Exception {
+  final String message;
+  final LoginErrorType type;
+
+  LoginException(this.message,{this.type=LoginErrorType.unknown});
+
+  @override
+  String toString() => message;
+}
+
+//登录错误类型
+enum LoginErrorType {
+  invalidCredentials,
+  notInGroup,
+  networkError,
+  unknown,
+}
+
+
 class ChaoxingApiClient {
   static final ChaoxingApiClient _instance = ChaoxingApiClient._internal();
   factory ChaoxingApiClient() => _instance;
@@ -111,8 +131,27 @@ class ChaoxingApiClient {
       );
 
       debugPrint("Login response status: ${response.statusCode}");
+      debugPrint('Login response data: ${response.data}');
 
-      // Check if cookies were set
+      //判断内容是否成功登录
+      if(response.statusCode== 200){
+        final responseData = response.data;
+        //检查HtML响应
+        if(responseData is String){
+          if(responseData.contains('账号或密码错误') ||
+              responseData.contains('用户名或密码错误')){
+            debugPrint('账号或密码错误');
+            throw LoginException('账号或密码错误', type: LoginErrorType.invalidCredentials);
+          }
+          if(responseData.contains('未加入小组')||responseData.contains('您还未加入该小组')){
+            debugPrint('未加入小组');
+            throw LoginException('未加入小组', type: LoginErrorType.notInGroup);
+          }
+        }
+      }
+
+
+      //检查Cokkie是否正确设置
       final cookies = await _cookieJar.loadForRequest(Uri.parse(_loginUrl));
       if (cookies.isNotEmpty) {
         debugPrint("Login successful, cookies captured: ${cookies.length}");

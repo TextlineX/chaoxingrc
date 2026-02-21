@@ -10,12 +10,15 @@ class TopicListLoadingWidget extends StatelessWidget {
       child: GlassCard(
         margin: const EdgeInsets.all(16.0),
         padding: const EdgeInsets.all(24.0),
-        child: const Column(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('正在加载动态...'),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              '正在加载动态...',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+            ),
           ],
         ),
       ),

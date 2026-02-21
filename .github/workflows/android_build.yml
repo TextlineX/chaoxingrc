@@ -100,6 +100,43 @@ jobs:
           CLEAN_VERSION=$(echo $FULL_VERSION | sed 's/+.*//')
           echo "clean_version=$CLEAN_VERSION" >> $GITHUB_OUTPUT
 
+      - name: 生成更新说明
+        id: changelog
+        run: |
+          # 获取上一个标签
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          # 生成更新说明
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "### 🎉 首次发布" > changelog.md
+            echo "" >> changelog.md
+            echo "这是项目的首次发布版本。" >> changelog.md
+            echo "" >> changelog.md
+            echo "### 📝 变更内容" >> changelog.md
+            git log --pretty=format:"- %s" >> changelog.md
+          else
+            echo "### 📝 自 $PREVIOUS_TAG 以来的变更" > changelog.md
+            echo "" >> changelog.md
+            git log $PREVIOUS_TAG..HEAD --pretty=format:"- %s" >> changelog.md
+          fi
+
+          # 读取 changelog 内容
+          CHANGELOG_CONTENT=$(cat changelog.md)
+
+          # 如果用户手动输入了发布说明，则合并
+          if [ -n "${{ github.event.inputs.release_notes }}" ]; then
+            echo "${{ github.event.inputs.release_notes }}" > changelog.md
+            echo "" >> changelog.md
+            echo "$CHANGELOG_CONTENT" >> changelog.md
+          fi
+
+          # 设置输出
+          {
+            echo 'changelog<<EOF'
+            cat changelog.md
+            echo EOF
+          } >> $GITHUB_OUTPUT
+
       - name: 下载构建产物
         uses: actions/download-artifact@v4
         with:
@@ -110,6 +147,6 @@ jobs:
         with:
           tag_name: ${{ github.ref_name == 'beta' && format('v{0}-beta', steps.version.outputs.clean_version) || format('v{0}', steps.version.outputs.clean_version) }}
           name: ${{ github.ref_name == 'beta' && 'Beta v' || 'Release v' }}${{ steps.version.outputs.clean_version }}
-          body: ${{ github.event.inputs.release_notes || '' }}
+          body: ${{ steps.changelog.outputs.changelog }}
           prerelease: ${{ github.ref_name == 'beta' }}
           files: artifacts/apks/app-release.apk
