@@ -120,21 +120,29 @@ jobs:
             git log $PREVIOUS_TAG..HEAD --pretty=format:"- %s" >> changelog.md
           fi
 
+          # 确保 changelog.md 文件存在且不为空
+          if [ ! -s changelog.md ]; then
+            echo "### 📝 更新日志" > changelog.md
+            echo "" >> changelog.md
+            echo "无变更记录" >> changelog.md
+          fi
+
           # 读取 changelog 内容
           CHANGELOG_CONTENT=$(cat changelog.md)
 
           # 如果用户手动输入了发布说明，则合并
           if [ -n "${{ github.event.inputs.release_notes }}" ]; then
-            echo "${{ github.event.inputs.release_notes }}" > changelog.md
-            echo "" >> changelog.md
-            echo "$CHANGELOG_CONTENT" >> changelog.md
+            echo "${{ github.event.inputs.release_notes }}" > temp_changelog.md
+            echo "" >> temp_changelog.md
+            echo "$CHANGELOG_CONTENT" >> temp_changelog.md
+            mv temp_changelog.md changelog.md
           fi
 
-          # 设置输出
+          # 设置输出，确保正确处理分隔符
           {
-            echo 'changelog<<DELIMITER'
+            echo 'changelog<<EOF'
             cat changelog.md
-            echo DELIMITER
+            echo 'EOF'
           } >> $GITHUB_OUTPUT
 
       - name: 下载构建产物
