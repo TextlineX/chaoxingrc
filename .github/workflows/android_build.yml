@@ -93,12 +93,50 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 获取当前版本号
-        id: version
+      - name: 检查并处理重复版本
+        id: version_check
         run: |
+          # 获取当前版本号
           FULL_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | xargs)
           CLEAN_VERSION=$(echo $FULL_VERSION | sed 's/+.*//')
-          echo "clean_version=$CLEAN_VERSION" >> $GITHUB_OUTPUT
+          
+          # 确定标签名称
+          if [ "${{ github.ref_name }}" == "beta" ]; then
+            TAG_NAME="v${CLEAN_VERSION}-beta"
+            RELEASE_NAME="Beta v${CLEAN_VERSION}"
+          else
+            TAG_NAME="v${CLEAN_VERSION}"
+            RELEASE_NAME="Release v${CLEAN_VERSION}"
+          fi
+          
+          echo "当前版本: $CLEAN_VERSION"
+          echo "标签名称: $TAG_NAME"
+          echo "发布名称: $RELEASE_NAME"
+          
+          # 检查标签是否已存在
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "警告: 标签 $TAG_NAME 已存在"
+            # 为重复版本添加时间戳后缀
+            TIMESTAMP=$(date +%Y%m%d%H%M%S)
+            if [ "${{ github.ref_name }}" == "beta" ]; then
+              NEW_TAG_NAME="v${CLEAN_VERSION}-beta-${TIMESTAMP}"
+              NEW_RELEASE_NAME="Beta v${CLEAN_VERSION} (${TIMESTAMP})"
+            else
+              NEW_TAG_NAME="v${CLEAN_VERSION}-${TIMESTAMP}"
+              NEW_RELEASE_NAME="Release v${CLEAN_VERSION} (${TIMESTAMP})"
+            fi
+            echo "使用新标签: $NEW_TAG_NAME"
+            echo "使用新发布名称: $NEW_RELEASE_NAME"
+            
+            echo "tag_name=$NEW_TAG_NAME" >> $GITHUB_OUTPUT
+            echo "release_name=$NEW_RELEASE_NAME" >> $GITHUB_OUTPUT
+            echo "is_duplicate=true" >> $GITHUB_OUTPUT
+          else
+            echo "标签 $TAG_NAME 不存在，可以正常创建"
+            echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+            echo "release_name=$RELEASE_NAME" >> $GITHUB_OUTPUT
+            echo "is_duplicate=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: 生成更新说明
         id: changelog
@@ -166,8 +204,8 @@ jobs:
       - name: 发布 Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name == 'beta' && format('v{0}-beta', steps.version.outputs.clean_version) || format('v{0}', steps.version.outputs.clean_version) }}
-          name: ${{ github.ref_name == 'beta' && 'Beta v' || 'Release v' }}${{ steps.version.outputs.clean_version }}
+          tag_name: ${{ steps.version_check.outputs.tag_name }}
+          name: ${{ steps.version_check.outputs.release_name }}
           body: ${{ steps.changelog.outputs.changelog }}
           prerelease: ${{ github.ref_name == 'beta' }}
           files: artifacts/apks/app-release.apk
