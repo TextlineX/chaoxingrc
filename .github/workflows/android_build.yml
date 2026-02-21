@@ -132,9 +132,9 @@ jobs:
 
           # 设置输出
           {
-            echo 'changelog<<EOF'
+            echo 'changelog<<DELIMITER'
             cat changelog.md
-            echo EOF
+            echo DELIMITER
           } >> $GITHUB_OUTPUT
 
       - name: 下载构建产物

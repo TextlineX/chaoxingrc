@@ -1,73 +1,155 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
-import 'dart:io' show Platform;
+import '../widgets/conditional_glass_effect.dart';
 
 class SponsorDialog extends StatelessWidget {
   const SponsorDialog({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('支持作者'),
+    final theme = Theme.of(context);
+    
+    return ConditionalGlassDialog(
+      title: Row(
+        children: [
+          Icon(
+            Icons.favorite,
+            color: theme.colorScheme.error,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          const Text('支持开发者'),
+        ],
+      ),
       content: SizedBox(
-        width: double.maxFinite, // 让对话框可以适应内容宽度
+        width: MediaQuery.of(context).size.width * 0.8,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 感谢文案
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.volunteer_activism,
+                    size: 40,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '感谢您的支持！',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '您的每一份支持都是对我们持续开发和维护的最大鼓励。我们将继续努力为您提供更好的体验！',
+                    style: TextStyle(
+                      color: theme.colorScheme.onPrimaryContainer,
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            // 支付方式标题
             Text(
-              '如果您喜欢我们的应用，请考虑赞助我们以支持后续开发。',
+              '选择支付方式',
               style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
               ),
             ),
-            const SizedBox(height: 20),
-            const Text(
-              '微信支付',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            const SizedBox(height: 16),
+            
+            // 微信支付卡片
+            _buildPaymentCard(
+              context: context,
+              title: '微信支付',
+              subtitle: '长按识别二维码',
+              icon: Icons.wechat,
+              iconColor: const Color(0xFF07C160),
+              imagePath: 'assets/sponsor/wechat.png',
+              onTap: () => _openImageOrLink(context, 'assets/sponsor/wechat.png'),
             ),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: () {
-                _openImageOrLink(context, 'assets/sponsor/wechat.png');
-              },
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: _buildSponsorImage('assets/sponsor/wechat.png', '微信赞助码'),
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              '支付宝支付',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Column(
-              children: [
-                // 支付宝二维码图片
-                GestureDetector(
-                  onTap: () {
-                    _openImageOrLink(context, 'assets/sponsor/alipay.jpg');
-                  },
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: _buildSponsorImage('assets/sponsor/alipay.jpg', '支付宝赞助码'),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // 支付宝跳转按钮
-                ElevatedButton(
-                  onPressed: () {
-                    _launchAlipay(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepOrange,
+            
+            const SizedBox(height: 16),
+            
+            // 支付宝支付卡片
+            _buildPaymentCard(
+              context: context,
+              title: '支付宝',
+              subtitle: '扫码或点击跳转',
+              icon: Icons.account_balance_wallet,
+              iconColor: Colors.blue,
+              imagePath: 'assets/sponsor/alipay.jpg',
+              onTap: () => _openImageOrLink(context, 'assets/sponsor/alipay.jpg'),
+              trailingWidget: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: FilledButton.icon(
+                  onPressed: () => _launchAlipay(context),
+                  icon: const Icon(Icons.open_in_browser, size: 18),
+                  label: const Text('立即支付'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.blue,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
-                  child: const Text('点击跳转到支付宝'),
                 ),
-              ],
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // 温馨提示
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 18,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '支付完成后，您可以在应用内留言告知，我们会及时回复感谢！',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -78,42 +160,99 @@ class SponsorDialog extends StatelessWidget {
             Navigator.of(context).pop();
           },
           child: Text(
-            '关闭',
+            '稍后再看',
             style: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
+              color: theme.colorScheme.onSurface,
             ),
           ),
+        ),
+        FilledButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: const Text('好的，谢谢'),
         ),
       ],
     );
   }
 
-  Widget _buildSponsorImage(String imagePath, String placeholderText) {
-    return Container(
-      width: 200,
-      height: 200,
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: Colors.grey,
-          width: 1,
+  Widget _buildPaymentCard({
+    required BuildContext context,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color iconColor,
+    required String imagePath,
+    required VoidCallback onTap,
+    Widget? trailingWidget,
+  }) {
+    final theme = Theme.of(context);
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: theme.colorScheme.outline.withValues(alpha: 0.2),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.asset(
-          imagePath,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              color: Colors.grey[200],
-              child: const Icon(
-                Icons.image_not_supported_outlined,
-                size: 40,
-                color: Colors.grey,
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
-            );
-          },
+              child: Icon(
+                icon,
+                color: iconColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (trailingWidget != null)
+              trailingWidget
+            else
+              Icon(
+                Icons.qr_code_scanner,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+          ],
         ),
       ),
     );

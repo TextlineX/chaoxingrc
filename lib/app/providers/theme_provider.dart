@@ -10,6 +10,7 @@ class ThemeProvider extends ChangeNotifier {
   static const String _useGlassEffectKey = 'use_glass_effect';
   static const String _wallpaperPathKey = 'custom_wallpaper_path';  // ← 新增：壁纸路径的key
   static const String _useWallpaperKey = 'use_custom_wallpaper';    // ← 新增：是否使用壁纸的开关
+  static const String _advancedSettingsKey = 'advanced_settings_enabled'; // 高级设置开关
 
   late SharedPreferences _prefs;
 
@@ -17,6 +18,7 @@ class ThemeProvider extends ChangeNotifier {
   Color _seedColor = Colors.blue;
   bool _useDynamicColor = true;
   bool _useGlassEffect = false;  // 默认关闭毛玻璃效果
+  bool _advancedSettingsEnabled = false; // 默认关闭高级设置
 
   // 壁纸相关新属性
   String _backgroundImagePath = '';     // 壁纸文件路径
@@ -30,6 +32,7 @@ class ThemeProvider extends ChangeNotifier {
   String get backgroundImagePath => _backgroundImagePath;
   bool get useCustomWallpaper => _useCustomWallpaper;  // ← 新增
   bool get hasCustomWallpaper => _useCustomWallpaper && _backgroundImagePath.isNotEmpty;
+  bool get advancedSettingsEnabled => _advancedSettingsEnabled; // 高级设置开关
 
   /// 初始化：从 SharedPreferences 加载所有设置
   Future<void> init({bool notify = true}) async {
@@ -48,12 +51,12 @@ class ThemeProvider extends ChangeNotifier {
     // 加载毛玻璃效果设置
     _useGlassEffect = _prefs.getBool(_useGlassEffectKey) ?? false;  // 默认关闭
 
-    // 加载毛玻璃效果设置
-    _useGlassEffect = _prefs.getBool(_useGlassEffectKey) ?? false;  // 默认关闭
-
     // ← 新增：加载自定义壁纸相关设置
     _backgroundImagePath = _prefs.getString(_wallpaperPathKey) ?? '';
     _useCustomWallpaper = _prefs.getBool(_useWallpaperKey) ?? false;
+
+    // 加载高级设置开关
+    _advancedSettingsEnabled = _prefs.getBool(_advancedSettingsKey) ?? false; // 默认关闭
 
     // 如果保存了壁纸路径但文件不存在，自动清理（防止无效路径）
     if (_backgroundImagePath.isNotEmpty) {
@@ -105,6 +108,13 @@ class ThemeProvider extends ChangeNotifier {
   Future<void> setUseGlassEffect(bool b) async {
     _useGlassEffect = b;
     await _prefs.setBool(_useGlassEffectKey, b);
+    notifyListeners();
+  }
+
+  // 设置高级设置开关
+  Future<void> setAdvancedSettingsEnabled(bool enabled) async {
+    _advancedSettingsEnabled = enabled;
+    await _prefs.setBool(_advancedSettingsKey, enabled);
     notifyListeners();
   }
 

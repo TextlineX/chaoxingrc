@@ -27,6 +27,7 @@ class TransferProvider extends ChangeNotifier {
   PermissionProvider? _permissionProvider; // 添加权限提供者
   Box? _taskBox;
   final Map<String, CancelToken> _cancelTokens = {};
+  final Set<String> _pausedTaskIds = {};
   
   // 添加上传失败回调
   UploadFailureCallback? _uploadFailureCallback;
@@ -177,6 +178,8 @@ class TransferProvider extends ChangeNotifier {
   Future<void> _startUpload(TransferTask task) async {
     CancelToken? cancelToken;
     try {
+      //如果有了下载进度，则保留当前进度
+      final initialProgress = task.downloadedBytes >0 ? task.downloadedBytes / task.totalSize : 0.0;
       _updateTaskStatus(task.id, TransferStatus.uploading, progress: 0.0);
 
       // 获取文件大小
@@ -207,8 +210,16 @@ class TransferProvider extends ChangeNotifier {
   Future<void> _startDownload(TransferTask task) async {
     CancelToken? cancelToken;
     try {
+      // 检查任务当前状态，如果已经暂停或取消，就不要继续下载
+      final currentTask = _tasks.firstWhere((t) => t.id == task.id);
+      if (currentTask.status == TransferStatus.paused || 
+          currentTask.status == TransferStatus.cancelled) {
+        debugPrint('任务已暂停或取消，不继续下载: taskId=${task.id}, status=${currentTask.status}');
+        return;
+      }
+      
       _updateTaskStatus(task.id, TransferStatus.downloading, progress: 0.0);
-
+  
       // 执行下载
       await _processDownload(task);
     } catch (e) {
@@ -247,15 +258,53 @@ class TransferProvider extends ChangeNotifier {
         'Referer': 'https://pan-yz.chaoxing.com/',
       };
 
-      // 下载文件
+      // 下载文件并且检查是否存在部分下载的文件
+      File file = File(filePath);
+      int existingBytes = 0;
+      if(await file.exists()) {
+        existingBytes = await file.length();
+        debugPrint('发现已下载的部分文件，大小: $existingBytes 字节');
+        
+        // 检查是否已经下载完成
+        if (existingBytes >= task.totalSize) {
+          debugPrint('文件已完全下载，无需重新下载');
+          _updateTaskStatus(
+            task.id,
+            TransferStatus.completed,
+            progress: 1.0,
+            downloadedBytes: task.totalSize,
+          );
+          return;
+        }
+        
+        // 检查范围是否有效（避免416错误）
+        if (existingBytes >= task.totalSize) {
+          debugPrint('已下载字节数超过文件总大小，重新开始下载');
+          existingBytes = 0;
+          await file.delete();
+        }
+      }
+
       int lastUpdateTime = DateTime.now().millisecondsSinceEpoch;
       int lastBytes = 0;
+
+
+      //如果有已下载的部分,使用Range请求头
+      if(existingBytes > 0) {
+        dio.options.headers['Range'] = 'bytes=$existingBytes-';
+        debugPrint('使用断点续传,从$existingBytes字节开始下载');
+      }
 
       await dio.download(
         downloadUrl,
         filePath,
         cancelToken: cancelToken,
+        options: Options(
+          receiveDataWhenStatusError: true,
+        ),
         onReceiveProgress: (received, total) {
+          // received 是本次下载的字节数加上已存在的
+          final totalReceived = existingBytes + received;
           if (total > 0) {
             final now = DateTime.now().millisecondsSinceEpoch;
             final timeDiff = (now - lastUpdateTime) / 1000; // 秒
@@ -286,7 +335,6 @@ class TransferProvider extends ChangeNotifier {
       );
     } catch (e) {
       _handleDownloadError(task, e, cancelToken);
-      rethrow;
     } finally {
       _cancelTokens.remove(task.id);
     }
@@ -676,9 +724,10 @@ class TransferProvider extends ChangeNotifier {
 
   // 处理下载错误
   void _handleDownloadError(TransferTask task, dynamic error, CancelToken? cancelToken) {
-    debugPrint('下载失败: $error');
-
     String errorMsg = '下载失败';
+    //默认状态为失败
+    TransferStatus errorStatus = TransferStatus.failed;
+
     if (error is DioException) {
       switch (error.type) {
         case DioExceptionType.connectionTimeout:
@@ -693,12 +742,45 @@ class TransferProvider extends ChangeNotifier {
         case DioExceptionType.badResponse:
           if (error.response?.statusCode == 403) {
             errorMsg = '下载链接已过期或无权限访问，请刷新文件列表后重试';
+          } else if (error.response?.statusCode == 416) {
+            errorMsg = '下载范围无效，将重新开始下载';
+            // 清除部分下载的文件并重新开始
+            try {
+              final filePath = _tasks.firstWhere((t) => t.id == task.id).filePath;
+              if (filePath.isNotEmpty) {
+                final file = File(filePath);
+                file.exists().then((exists) {
+                  if (exists) {
+                    file.delete().then((_) {
+                      debugPrint('删除无效的部分下载文件: $filePath');
+                    }).catchError((e) {
+                      debugPrint('删除文件失败: $e');
+                    });
+                  }
+                }).catchError((e) {
+                  debugPrint('检查文件存在性失败: $e');
+                });
+              }
+            } catch (e) {
+              debugPrint('清理部分下载文件失败: $e');
+            }
+            // 重新开始下载
+            _updateTaskStatus(task.id, TransferStatus.pending, progress: 0.0, downloadedBytes: 0);
+            Future.microtask(() => _startDownload(task));
+            return; // 不继续执行后续的错误处理
           } else {
             errorMsg = '服务器响应错误: ${error.response?.statusMessage ?? '未知错误'}';
           }
           break;
         case DioExceptionType.cancel:
-          errorMsg = '下载已取消';
+          if(_pausedTaskIds.contains(task.id)){
+            errorMsg = '下载已暂停';
+            errorStatus = TransferStatus.paused;
+            // 不清除标记，让resumeTask方法来清除
+          }else{
+            errorMsg = '下载已取消';
+            errorStatus = TransferStatus.cancelled;
+          }
           break;
         case DioExceptionType.unknown:
           if (error.error?.toString().contains('SocketException') == true) {
@@ -708,6 +790,9 @@ class TransferProvider extends ChangeNotifier {
         default:
           errorMsg = error.message ?? '下载失败';
       }
+      //输出错误信息
+      debugPrint('处理下载错误: taskId=${task.id}, error=$error, errorStatus=$errorStatus');
+
     } else if (error is FileSystemException) {
       errorMsg = '文件访问失败: ${error.message}';
     } else if (error is String) {
@@ -726,7 +811,7 @@ class TransferProvider extends ChangeNotifier {
 
     _updateTaskStatus(
       task.id,
-      TransferStatus.failed,
+      errorStatus,
       error: errorMsg,
     );
 
@@ -745,6 +830,8 @@ class TransferProvider extends ChangeNotifier {
         int? downloadedBytes,
         String? error,
       }) {
+    debugPrint('更新任务状态: taskId=$taskId, oldStatus=${_tasks.firstWhere((t) => t.id == taskId).status}, newStatus=$status');
+
     final index = _tasks.indexWhere((t) => t.id == taskId);
     if (index != -1) {
       final task = _tasks[index];
@@ -866,26 +953,57 @@ class TransferProvider extends ChangeNotifier {
   }
 
   // 暂停任务
-  void pauseTask(String taskId) {
+  Future<void> pauseTask(String taskId) async {
+    debugPrint('暂停任务: taskId=$taskId, hasCancelToken=${_cancelTokens.containsKey(taskId)}');
+    
+    // 首先检查任务是否存在以及是否处于可暂停状态
+    final task = _tasks.firstWhere(
+      (t) => t.id == taskId,
+      orElse: () => throw Exception('任务未找到'),
+    );
+    
+    // 只有正在下载或上传的任务才能暂停
+    if (task.status != TransferStatus.downloading && task.status != TransferStatus.uploading) {
+      debugPrint('任务状态不可暂停: currentStatus=${task.status}');
+      return;
+    }
+
     if (_cancelTokens.containsKey(taskId)) {
       _cancelTokens[taskId]?.cancel('Paused by user');
       _cancelTokens.remove(taskId);
+
+      //添加标记
+      _pausedTaskIds.add(taskId);
+      _updateTaskStatus(taskId, TransferStatus.paused);
+    } else {
+      // 如果没有cancelToken但仍处于下载/上传状态，直接设置为暂停
+      debugPrint('任务没有cancelToken但仍处于活动状态，直接设置为暂停');
+      _pausedTaskIds.add(taskId);
       _updateTaskStatus(taskId, TransferStatus.paused);
     }
+    
+    // 等待一小段时间确保状态更新完成
+    await Future.delayed(const Duration(milliseconds: 100));
   }
 
   // 继续任务
-  void resumeTask(String taskId) {
+  Future<void> resumeTask(String taskId) async {
     final task = _tasks.firstWhere(
           (t) => t.id == taskId && t.status == TransferStatus.paused,
       orElse: () => throw Exception('Task not found or not paused'),
     );
 
+    // 清除暂停标记
+    _pausedTaskIds.remove(taskId);
+
     final index = _tasks.indexOf(task);
     if (index != -1) {
       _tasks[index] = task.copyWith(
         status: TransferStatus.pending,
-        error: null, // Reset error if any
+        error: null,  // Reset error if any
+        // 保留已下载的字节数和进度，不要重置
+        // downloadedBytes: task.downloadedBytes, // 已保留
+        // progress: task.progress, // 已保留
       );
       _saveTasks();
       notifyListeners();
@@ -896,6 +1014,9 @@ class TransferProvider extends ChangeNotifier {
     } else {
       _startDownload(task);
     }
+    
+    // 等待一小段时间确保状态更新完成
+    await Future.delayed(const Duration(milliseconds: 100));
   }
 
   // 取消任务
@@ -911,10 +1032,10 @@ class TransferProvider extends ChangeNotifier {
   }
 
   // 重试任务
-  void retryTask(String taskId) {
+  Future<void> retryTask(String taskId) async {
     final task = _tasks.firstWhere(
-          (t) => t.id == taskId && t.status == TransferStatus.failed,
-      orElse: () => throw Exception('Task not found or not failed'),
+          (t) => t.id == taskId && (t.status == TransferStatus.cancelled || t.status == TransferStatus.failed),
+      orElse: () => throw Exception('任务未找到或未处于可重试状态'),
     );
 
     // 在重试前重置任务的关键属性
@@ -939,6 +1060,9 @@ class TransferProvider extends ChangeNotifier {
     } else {
       _startDownload(task);
     }
+    
+    // 等待一小段时间确保状态更新完成
+    await Future.delayed(const Duration(milliseconds: 100));
   }
 
   // 删除任务

@@ -282,7 +282,7 @@ class ProfileTab extends StatelessWidget {
           if (userProvider.circles.length > 1) ...[
             ListTile(
               leading: const Icon(Icons.swap_horiz),
-              title: const Text('切换小组'),
+              title: Text('切换小组', style: TextStyle(color:Theme.of(context).colorScheme.onSurface,)),
               subtitle: Text(userProvider.currentCircleName),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _showSwitchCircleDialog(context, userProvider),
@@ -341,7 +341,7 @@ class ProfileTab extends StatelessWidget {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => ConditionalGlassDialog(  // 改为条件性对话框
-        title: const Text('切换小组'),
+        title: Text('切换小组',style: TextStyle(color: Theme.of(context).colorScheme.onSurface,)),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView.builder(

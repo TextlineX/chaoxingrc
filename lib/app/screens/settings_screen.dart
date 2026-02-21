@@ -292,73 +292,102 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             themeProvider.setUseDynamicColor(!themeProvider.useDynamicColor);
                           },
                         ),
-                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              // 高级设置
+              Consumer<ThemeProvider>(
+                builder: (context, themeProvider, child) {
+                  return ConditionalGlassCard(
+                    child: Column(
+                      children: [
                         ConditionalGlassListTile(
-                          title: const Text('毛玻璃效果'),
-                          subtitle: const Text('为界面元素添加半透明模糊效果'),
+                          title: const Text('高级设置'),
+                          subtitle: const Text('毛玻璃效果和自定义壁纸等高级功能'),
                           trailing: Switch(
-                            value: themeProvider.useGlassEffect,
+                            value: themeProvider.advancedSettingsEnabled,
                             onChanged: (value) {
-                              themeProvider.setUseGlassEffect(value);
+                              themeProvider.setAdvancedSettingsEnabled(value);
                             },
                           ),
                           onTap: () {
-                            themeProvider.setUseGlassEffect(!themeProvider.useGlassEffect);
+                            themeProvider.setAdvancedSettingsEnabled(!themeProvider.advancedSettingsEnabled);
                           },
                         ),
-                        const SizedBox(height: 8),
-                        ConditionalGlassListTile(
-                          leading: themeProvider.backgroundImagePath.isNotEmpty
-                              ? CircleAvatar(
-                                  backgroundImage: FileImage(File(themeProvider.backgroundImagePath)),
-                                  radius: 20,
-                                )
-                              : const Icon(Icons.wallpaper, size: 40),
-                          title: const Text('自定义壁纸'),
-                          subtitle: themeProvider.backgroundImagePath.isEmpty
-                              ? const Text('未设置（主界面将使用纯色背景）')
-                              : const Text('已设置自定义壁纸'),
-                          trailing: const Icon(Icons.wallpaper),
-                          onTap: () async {
-                            final picker = ImagePicker();
-                            final pickedFile = await picker.pickImage(
-                              source: ImageSource.gallery,
-                              // 可选：限制图片大小，避免太大卡顿
-                              // maxWidth: 1920,
-                              // imageQuality: 85,
-                            );
-
-                            if (pickedFile != null && context.mounted) {
-                              final appDir = await getApplicationDocumentsDirectory();
-
-                              // 推荐：加时间戳，避免覆盖旧壁纸
-                              final fileName = 'custom_wallpaper_${DateTime.now().millisecondsSinceEpoch}.jpg';
-                              final savedImage = await File(pickedFile.path).copy('${appDir.path}/$fileName');
-
-                              await themeProvider.setCustomWallpaper(savedImage.path);
-
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('壁纸已更新，主题颜色自动同步！')),
-                                );
-                              }
-                            }
-                          },
-                        ),
-                        if (themeProvider.backgroundImagePath.isNotEmpty) ...[
+                        if (themeProvider.advancedSettingsEnabled) ...[
+                          const Divider(),
+                          ConditionalGlassListTile(
+                            title: const Text('毛玻璃效果'),
+                            subtitle: const Text('为界面元素添加半透明模糊效果'),
+                            trailing: Switch(
+                              value: themeProvider.useGlassEffect,
+                              onChanged: (value) {
+                                themeProvider.setUseGlassEffect(value);
+                              },
+                            ),
+                            onTap: () {
+                              themeProvider.setUseGlassEffect(!themeProvider.useGlassEffect);
+                            },
+                          ),
                           const SizedBox(height: 8),
                           ConditionalGlassListTile(
-                            title: const Text('移除自定义壁纸'),
-                            trailing: const Icon(Icons.delete_outline),
+                            leading: themeProvider.backgroundImagePath.isNotEmpty
+                                ? CircleAvatar(
+                                    backgroundImage: FileImage(File(themeProvider.backgroundImagePath)),
+                                    radius: 20,
+                                  )
+                                : const Icon(Icons.wallpaper, size: 40),
+                            title: const Text('自定义壁纸'),
+                            subtitle: themeProvider.backgroundImagePath.isEmpty
+                                ? const Text('未设置（主界面将使用纯色背景）')
+                                : const Text('已设置自定义壁纸'),
+                            trailing: const Icon(Icons.wallpaper),
                             onTap: () async {
-                              if (context.mounted) {
-                                await themeProvider.removeCustomWallpaper();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('已移除自定义壁纸')),
-                                );
+                              final picker = ImagePicker();
+                              final pickedFile = await picker.pickImage(
+                                source: ImageSource.gallery,
+                                // 可选：限制图片大小，避免太大卡顿
+                                // maxWidth: 1920,
+                                // imageQuality: 85,
+                              );
+
+                              if (pickedFile != null && context.mounted) {
+                                final appDir = await getApplicationDocumentsDirectory();
+
+                                // 推荐：加时间戳，避免覆盖旧壁纸
+                                final fileName = 'custom_wallpaper_${DateTime.now().millisecondsSinceEpoch}.jpg';
+                                final savedImage = await File(pickedFile.path).copy('${appDir.path}/$fileName');
+
+                                await themeProvider.setCustomWallpaper(savedImage.path);
+
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('壁纸已更新，主题颜色自动同步！')),
+                                  );
+                                }
                               }
                             },
                           ),
+                          if (themeProvider.backgroundImagePath.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            ConditionalGlassListTile(
+                              title: const Text('移除自定义壁纸'),
+                              trailing: const Icon(Icons.delete_outline),
+                              onTap: () async {
+                                if (context.mounted) {
+                                  await themeProvider.removeCustomWallpaper();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('已移除自定义壁纸')),
+                                  );
+                                }
+                              },
+                            ),
+                          ],
                         ],
                       ],
                     ),
