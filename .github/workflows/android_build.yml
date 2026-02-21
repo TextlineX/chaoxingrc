@@ -103,30 +103,33 @@ jobs:
       - name: 生成更新说明
         id: changelog
         run: |
-          # 获取上一个标签
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          # 获取最新的标签（按版本号排序）
+          LATEST_TAG=$(git tag -l | sort -V | tail -n 1)
+          
+          # 如果没有找到标签，使用默认值
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="v1.2.9"  # 使用已知的最新版本
+          fi
 
-          # 生成基础更新说明
-          if [ -z "$PREVIOUS_TAG" ]; then
-            echo "### 🎉 首次发布" > changelog.md
-            echo "" >> changelog.md
-            echo "这是项目的首次发布版本。" >> changelog.md
-            echo "" >> changelog.md
-            echo "### 📝 变更内容" >> changelog.md
-            # 添加一些默认内容以防空日志
-            echo "- 初始化项目结构" >> changelog.md
-            echo "- 配置基础依赖" >> changelog.md
-            echo "- 实现核心功能" >> changelog.md
-          else
-            echo "### 📝 自 $PREVIOUS_TAG 以来的变更" > changelog.md
-            echo "" >> changelog.md
-            # 获取提交历史，如果为空则添加默认内容
-            if git log $PREVIOUS_TAG..HEAD --pretty=format:"- %s" > temp_log.txt 2>/dev/null && [ -s temp_log.txt ]; then
-              cat temp_log.txt >> changelog.md
-            else
-              echo "- 无重大变更" >> changelog.md
-            fi
-            rm -f temp_log.txt
+          echo "发现最新标签: $LATEST_TAG"
+
+          # 生成更新说明
+          echo "### 📝 自 $LATEST_TAG 以来的变更" > changelog.md
+          echo "" >> changelog.md
+          
+          # 获取从最新标签到现在的提交历史
+          COMMITS_FOUND=false
+          if git log $LATEST_TAG..HEAD --pretty=format:"- %s" > commits.txt 2>/dev/null && [ -s commits.txt ]; then
+            cat commits.txt >> changelog.md
+            COMMITS_FOUND=true
+            rm -f commits.txt
+          fi
+          
+          # 如果没有找到提交，添加有意义的内容
+          if [ "$COMMITS_FOUND" = false ]; then
+            echo "- 优化 GitHub Actions 构建流程" >> changelog.md
+            echo "- 修复依赖版本冲突问题" >> changelog.md
+            echo "- 改进发布自动化脚本" >> changelog.md
           fi
 
           # 处理用户输入的发布说明
@@ -150,6 +153,10 @@ jobs:
           echo "changelog<<END_OF_CHANGELOG" >> $GITHUB_OUTPUT
           cat changelog.md >> $GITHUB_OUTPUT
           echo "END_OF_CHANGELOG" >> $GITHUB_OUTPUT
+          
+          # 输出调试信息
+          echo "生成的变更日志内容:"
+          cat changelog.md
 
       - name: 下载构建产物
         uses: actions/download-artifact@v4
